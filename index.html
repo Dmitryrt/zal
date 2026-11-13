@@ -347,6 +347,10 @@
       padding: 12px 8px 8px;
     }
     .empty.hidden { display: none; }
+    .empty.has-workouts {
+      min-height: 0;
+      padding-top: 4px;
+    }
 
     .empty img {
       width: 210px;
@@ -577,6 +581,39 @@
     }
     .kind-meta svg { color: #636366; }
 
+    .day-workouts {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .day-workouts.hidden { display: none; }
+
+    .day-workout {
+      width: 100%;
+      border: 0;
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 10px 12px 10px 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+    }
+    .day-workout .pic {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+    .day-workout .name {
+      flex: 1;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
     .remove {
       width: 32px;
       height: 32px;
@@ -662,6 +699,8 @@
         <span class="value" id="calories-value">0 ккал</span>
       </button>
     </div>
+
+    <div class="day-workouts hidden" id="day-workouts"></div>
 
     <div class="empty" id="empty-state">
       <img id="empty-bear" src="./cheems-rest.jpg?v=2" alt="" width="210" height="210">
@@ -814,6 +853,7 @@
       const emptyState = document.getElementById("empty-state");
       const catalogEl = document.getElementById("catalog");
       const kindList = document.getElementById("kind-list");
+      const dayWorkoutsEl = document.getElementById("day-workouts");
       const pickerEl = document.getElementById("kind-picker");
       const pickerList = document.getElementById("picker-list");
       const catalogHint = document.getElementById("catalog-hint");
@@ -1025,6 +1065,14 @@
 
       function fitMascot() {
         emptyState.classList.remove("hidden");
+        if (!emptyState.classList.contains("has-workouts")) return;
+        const measure = () => {
+          const room = window.innerHeight - emptyState.getBoundingClientRect().top - 20;
+          emptyState.classList.toggle("hidden", room < 168);
+        };
+        requestAnimationFrame(measure);
+        clearTimeout(fitMascot.timer);
+        fitMascot.timer = setTimeout(measure, 340);
       }
 
       function workoutsFor(key) {
@@ -1283,7 +1331,32 @@
 
         const weekday = selectedDate.getDay();
         const gymDay = weekday === 2 || weekday === 4;
-        emptyBear.src = mascotFor(workoutsFor(selectedKey), gymDay);
+        const workouts = workoutsFor(selectedKey);
+        const hasWorkouts = workouts.length > 0;
+        emptyBear.src = mascotFor(workouts, gymDay);
+        emptyState.classList.toggle("has-workouts", hasWorkouts);
+        dayWorkoutsEl.classList.toggle("hidden", !hasWorkouts);
+        if (hasWorkouts) {
+          dayWorkoutsEl.replaceChildren(...workouts.map((item) => {
+            const row = document.createElement("div");
+            row.className = "day-workout";
+            const kind = typeById(item.typeId);
+            const pic = kindPicture(kind, 52);
+            const name = document.createElement("span");
+            name.className = "name";
+            name.textContent = item.name;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "remove";
+            remove.dataset.id = item.id;
+            remove.setAttribute("aria-label", `Убрать ${item.name}`);
+            remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+            row.append(pic, name, remove);
+            return row;
+          }));
+        } else {
+          dayWorkoutsEl.replaceChildren();
+        }
 
         renderKinds();
         fitMascot();
@@ -1709,6 +1782,15 @@
         writeFrequent();
         closeSheet(pickerEl);
         renderKinds();
+      });
+      dayWorkoutsEl.addEventListener("click", (event) => {
+        const btn = event.target.closest(".remove");
+        if (!btn || !btn.dataset.id) return;
+        stampDay(selectedKey, currentRecord(selectedKey, {
+          workouts: workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id)
+        }));
+        writeDay(selectedKey);
+        render();
       });
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
