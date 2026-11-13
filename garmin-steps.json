@@ -1,32 +1,140 @@
 {
-  "updatedAt": "2026-11-13T12:25:07Z",
+  "updatedAt": "2026-11-13T13:39:38Z",
   "days": {
-    "2026-10-17": 7477,
-    "2026-10-18": 8788,
-    "2026-10-19": 5365,
-    "2026-10-20": 6771,
-    "2026-10-21": 5217,
-    "2026-10-22": 5679,
-    "2026-10-23": 5560,
-    "2026-10-24": 6467,
-    "2026-10-25": 6980,
-    "2026-10-26": 7647,
-    "2026-10-27": 11708,
-    "2026-10-28": 5558,
-    "2026-10-29": 10150,
-    "2026-10-30": 10567,
-    "2026-10-31": 2429,
-    "2026-11-01": 3092,
-    "2026-11-02": 7182,
-    "2026-11-03": 10443,
-    "2026-11-04": 1050,
-    "2026-11-05": 60,
-    "2026-11-06": 545,
-    "2026-11-07": 14336,
-    "2026-11-08": 1214,
-    "2026-11-09": 715,
-    "2026-11-10": 186,
-    "2026-11-11": 98,
-    "2026-11-12": 32
+    "2026-10-17": {
+      "steps": 7477,
+      "activeCalories": 507,
+      "distanceM": 6006
+    },
+    "2026-10-18": {
+      "steps": 8788,
+      "activeCalories": 484,
+      "distanceM": 7039
+    },
+    "2026-10-19": {
+      "steps": 5365,
+      "activeCalories": 225,
+      "distanceM": 4425
+    },
+    "2026-10-20": {
+      "steps": 6771,
+      "activeCalories": 319,
+      "distanceM": 5511
+    },
+    "2026-10-21": {
+      "steps": 5217,
+      "activeCalories": 223,
+      "distanceM": 4188
+    },
+    "2026-10-22": {
+      "steps": 5679,
+      "activeCalories": 294,
+      "distanceM": 4557
+    },
+    "2026-10-23": {
+      "steps": 5560,
+      "activeCalories": 364,
+      "distanceM": 4517
+    },
+    "2026-10-24": {
+      "steps": 6467,
+      "activeCalories": 570,
+      "distanceM": 5193
+    },
+    "2026-10-25": {
+      "steps": 6980,
+      "activeCalories": 557,
+      "distanceM": 5641
+    },
+    "2026-10-26": {
+      "steps": 7647,
+      "activeCalories": 576,
+      "distanceM": 6158
+    },
+    "2026-10-27": {
+      "steps": 11708,
+      "activeCalories": 901,
+      "distanceM": 9591
+    },
+    "2026-10-28": {
+      "steps": 5558,
+      "activeCalories": 298,
+      "distanceM": 4542
+    },
+    "2026-10-29": {
+      "steps": 10150,
+      "activeCalories": 714,
+      "distanceM": 8199
+    },
+    "2026-10-30": {
+      "steps": 10567,
+      "activeCalories": 1155,
+      "distanceM": 8742
+    },
+    "2026-10-31": {
+      "steps": 2429,
+      "activeCalories": 132,
+      "distanceM": 1946
+    },
+    "2026-11-01": {
+      "steps": 3092,
+      "activeCalories": 191,
+      "distanceM": 2491
+    },
+    "2026-11-02": {
+      "steps": 7182,
+      "activeCalories": 348,
+      "distanceM": 5806
+    },
+    "2026-11-03": {
+      "steps": 10443,
+      "activeCalories": 791,
+      "distanceM": 8532
+    },
+    "2026-11-04": {
+      "steps": 1050,
+      "activeCalories": 82,
+      "distanceM": 848
+    },
+    "2026-11-05": {
+      "steps": 60,
+      "activeCalories": 1,
+      "distanceM": 48
+    },
+    "2026-11-06": {
+      "steps": 545,
+      "activeCalories": 19,
+      "distanceM": 437
+    },
+    "2026-11-07": {
+      "steps": 14336,
+      "activeCalories": 907,
+      "distanceM": 11512
+    },
+    "2026-11-08": {
+      "steps": 1214,
+      "activeCalories": 50,
+      "distanceM": 972
+    },
+    "2026-11-09": {
+      "steps": 715,
+      "activeCalories": 132,
+      "distanceM": 573
+    },
+    "2026-11-10": {
+      "steps": 186,
+      "activeCalories": 80,
+      "distanceM": 149
+    },
+    "2026-11-11": {
+      "steps": 98,
+      "activeCalories": 37,
+      "distanceM": 79
+    },
+    "2026-11-12": {
+      "steps": 32,
+      "activeCalories": 0,
+      "distanceM": 26
+    }
   }
 }
