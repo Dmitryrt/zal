@@ -78,6 +78,12 @@
     .header-actions {
       display: flex;
       gap: 10px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 360px) {
+      h1 { font-size: 1.7rem; }
+      .header-actions { gap: 8px; }
     }
 
     .icon-btn, .sheet-save, button {
@@ -499,6 +505,71 @@
       text-align: center;
     }
     .catalog-hint.hidden { display: none; }
+    .records-hint {
+      margin: -4px 6px 14px;
+      text-align: left;
+    }
+
+    .record-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .record-row {
+      min-height: 64px;
+      padding: 8px 2px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .record-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: var(--fill);
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+
+    .record-icon.distance { color: #64d2ff; }
+    .record-icon.calorie { color: var(--ring); }
+    .record-icon.plain { background: transparent; }
+
+    .record-icon img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+
+    .record-copy {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .record-name {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .record-note {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .record-value {
+      flex-shrink: 0;
+      font-weight: 650;
+      font-size: 0.95rem;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
 
     .catalog-inner {
       width: min(430px, 100%);
@@ -655,6 +726,14 @@
             <path d="M19.5 12.6 12 20l-7.5-7.4a4.5 4.5 0 0 1 6.4-6.3L12 7.7l1.1-1.4a4.5 4.5 0 0 1 6.4 6.3z"/>
           </svg>
         </button>
+        <button class="icon-btn" id="records-btn" type="button" aria-label="Рекорды">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 21h8M12 17v4"/>
+            <path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/>
+            <path d="M7 6H4.8A2.2 2.2 0 0 0 7 10.5"/>
+            <path d="M17 6h2.2A2.2 2.2 0 0 1 17 10.5"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="settings-btn" type="button" aria-label="Настройки">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
@@ -801,6 +880,17 @@
     </div>
   </div>
 
+  <div class="catalog hidden" id="records" role="dialog" aria-labelledby="records-title">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="records-close" type="button" aria-label="Закрыть">
+        <span></span>
+      </button>
+      <h2 class="picker-title" id="records-title">Рекорды</h2>
+      <p class="catalog-hint records-hint" id="records-hint">Максимум за месяц / за год</p>
+      <div class="record-list" id="records-list"></div>
+    </div>
+  </div>
+
   <div class="catalog picker hidden" id="kind-picker" role="dialog" aria-labelledby="picker-title">
     <div class="catalog-inner">
       <button class="catalog-grab" id="picker-close" type="button" aria-label="Назад">
@@ -881,6 +971,9 @@
       const emptyBear = document.getElementById("empty-bear");
       const emptyState = document.getElementById("empty-state");
       const catalogEl = document.getElementById("catalog");
+      const recordsEl = document.getElementById("records");
+      const recordsList = document.getElementById("records-list");
+      const recordsHint = document.getElementById("records-hint");
       const kindList = document.getElementById("kind-list");
       const dayWorkoutsEl = document.getElementById("day-workouts");
       const pickerEl = document.getElementById("kind-picker");
@@ -1128,6 +1221,57 @@
           if (key.startsWith(month)) inMonth += matches;
         });
         return { inMonth, inYear };
+      }
+
+      function periodOfSelected() {
+        const selected = parseKey(selectedKey);
+        const year = String(selected.getFullYear());
+        return {
+          year,
+          month: `${year}-${pad(selected.getMonth() + 1)}`,
+          monthName: MONTHS[selected.getMonth()]
+        };
+      }
+
+      function bestInPeriod(read) {
+        const { year, month } = periodOfSelected();
+        let inMonth = 0;
+        let inYear = 0;
+        Object.keys(days).forEach((key) => {
+          if (!key.startsWith(year)) return;
+          const value = read(key);
+          if (!Number.isFinite(value) || value <= 0) return;
+          if (value > inYear) inYear = value;
+          if (key.startsWith(month) && value > inMonth) inMonth = value;
+        });
+        return { inMonth, inYear };
+      }
+
+      function bestWorkout(typeId, field) {
+        return bestInPeriod((key) => {
+          let best = 0;
+          workoutsFor(key).forEach((item) => {
+            if (!item || item.typeId !== typeId || !item.stats) return;
+            const value = Number(item.stats[field]);
+            if (Number.isFinite(value) && value > best) best = value;
+          });
+          return best;
+        });
+      }
+
+      function formatKmNumber(meters) {
+        return (meters / 1000).toFixed(1).replace(".", ",");
+      }
+
+      function formatSpeedNumber(metersPerSecond) {
+        return (metersPerSecond * 3.6).toFixed(1).replace(".", ",");
+      }
+
+      function recordValue(inMonth, inYear, formatValue, unit) {
+        return {
+          text: `${formatValue(inMonth)} / ${formatValue(inYear)}${unit ? " " + unit : ""}`,
+          title: `${formatValue(inMonth)} за месяц, ${formatValue(inYear)} за год`
+        };
       }
 
       function marksFor(key) {
@@ -1409,6 +1553,7 @@
         }
 
         renderKinds();
+        renderRecords();
         fitMascot();
       }
 
@@ -1453,6 +1598,74 @@
         const frequent = frequentKinds();
         kindList.replaceChildren(...frequent.map((kind) => kindRow(kind, { showCount: true, canRemove: true })));
         catalogHint.classList.toggle("hidden", frequent.length > 0);
+      }
+
+      function renderRecords() {
+        const { monthName } = periodOfSelected();
+        recordsHint.textContent = `${monthName} · максимум за месяц / за год`;
+        const steps = bestInPeriod(stepsFor);
+        const distance = bestInPeriod(distanceFor);
+        const calories = bestInPeriod(caloriesFor);
+        const snowboard = bestWorkout("snowboard", "maxSpeed");
+        const bike = bestWorkout("bike", "distanceM");
+        const rows = [
+          {
+            name: "Шаги",
+            tone: "",
+            svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 3 10.5 3 8c0-2.5 1.5-6 4.5-6C9.4 2 10 3.8 10 5.5 10 8.6 8 11.2 8 14.2V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1-3.12 1-5.62 0-2.5-1.5-6-4.5-6C14.6 6 14 7.8 14 9.5c0 3.1 2 5.7 2 8.7V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4M4 13h4"/></svg>',
+            value: recordValue(steps.inMonth, steps.inYear, formatCount, "")
+          },
+          {
+            name: "Дистанция",
+            tone: "distance",
+            svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2.5"/><path d="M8.6 19h8.1a3.3 3.3 0 1 0 0-6.6H8.2a3.3 3.3 0 1 1 0-6.6H15"/><circle cx="18" cy="5" r="2.5"/></svg>',
+            value: recordValue(distance.inMonth, distance.inYear, formatKmNumber, "км")
+          },
+          {
+            name: "Активные калории",
+            tone: "calorie",
+            svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M13.2 2.4c.2 2.4 1.7 4.1 3.2 6.1 1.4 1.8 2.6 3.5 2.6 5.8a7 7 0 1 1-14 0c0-2.6 1.6-4.8 3.2-7 1.5-2 2.8-3.7 3.4-4.9.4 1.4 1.1 2.6 1.6 3.8Z"/></svg>',
+            value: recordValue(calories.inMonth, calories.inYear, formatCount, "ккал")
+          },
+          {
+            name: "Сноуборд",
+            note: "максимальная скорость",
+            kind: "snowboard",
+            value: recordValue(snowboard.inMonth, snowboard.inYear, formatSpeedNumber, "км/ч")
+          },
+          {
+            name: "Велосипед",
+            note: "максимальная дистанция",
+            kind: "bike",
+            value: recordValue(bike.inMonth, bike.inYear, formatKmNumber, "км")
+          }
+        ];
+        recordsList.replaceChildren(...rows.map((spec) => {
+          const row = document.createElement("div");
+          row.className = "record-row";
+          const icon = document.createElement("span");
+          icon.className = "record-icon" + (spec.tone ? " " + spec.tone : "") + (spec.kind ? " plain" : "");
+          if (spec.kind) icon.appendChild(kindPicture(typeById(spec.kind), 44));
+          else icon.innerHTML = spec.svg;
+          const copy = document.createElement("span");
+          copy.className = "record-copy";
+          const name = document.createElement("span");
+          name.className = "record-name";
+          name.textContent = spec.name;
+          copy.append(name);
+          if (spec.note) {
+            const note = document.createElement("span");
+            note.className = "record-note";
+            note.textContent = spec.note;
+            copy.append(note);
+          }
+          const value = document.createElement("span");
+          value.className = "record-value";
+          value.textContent = spec.value.text;
+          value.title = spec.value.title;
+          row.append(icon, copy, value);
+          return row;
+        }));
       }
 
       function renderPicker() {
@@ -1952,6 +2165,13 @@
         renderKinds();
         openSheet(catalogEl);
       });
+      document.getElementById("records-btn").addEventListener("click", () => {
+        renderRecords();
+        openSheet(recordsEl);
+      });
+      document.getElementById("records-close").addEventListener("click", () => {
+        closeSheet(recordsEl);
+      });
       document.getElementById("catalog-close").addEventListener("click", () => {
         closeSheet(pickerEl);
         closeSheet(catalogEl);
@@ -2020,6 +2240,10 @@
         if (event.key !== "Escape") return;
         if (!pickerEl.classList.contains("hidden")) {
           closeSheet(pickerEl);
+          return;
+        }
+        if (!recordsEl.classList.contains("hidden")) {
+          closeSheet(recordsEl);
           return;
         }
         if (!catalogEl.classList.contains("hidden")) {
