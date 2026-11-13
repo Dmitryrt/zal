@@ -240,6 +240,9 @@ KIND_BY_TYPE = {
     "virtual_running": "run",
     "ultra_running": "run",
     "obstacle_course_racing": "run",
+    "walking": "walk",
+    "casual_walking": "walk",
+    "speed_walking": "walk",
 }
 LAP_TYPES = {"snowboard", "wakeboard", "enduro", "pool"}
 
