@@ -747,13 +747,13 @@
       const KIND_IDS = new Set(KINDS.map((row) => row.id));
 
       const firebaseConfig = {
-        apiKey: "",
-        authDomain: "",
-        databaseURL: "",
-        projectId: "",
-        storageBucket: "",
-        messagingSenderId: "",
-        appId: ""
+        apiKey: "AIzaSyD0kz0d5QKy4Da-s-6_w7AVkE1p9Z8K9WU",
+        authDomain: "active-9545e.firebaseapp.com",
+        databaseURL: "https://active-9545e-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "active-9545e",
+        storageBucket: "active-9545e.firebasestorage.app",
+        messagingSenderId: "470300337146",
+        appId: "1:470300337146:web:31d8995af10961d3bbba43"
       };
 
       const calendarEl = document.getElementById("calendar");
@@ -1312,7 +1312,7 @@
       function applyGarminSteps(payload) {
         const map = payload && payload.days;
         if (!map || typeof map !== "object") return false;
-        let changed = false;
+        const changedKeys = [];
         Object.keys(map).forEach((key) => {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
           const incoming = parseGarminDay(map[key]);
@@ -1333,10 +1333,18 @@
             activeCalories: calories,
             manualSteps: row.manualSteps
           });
-          changed = true;
+          changedKeys.push(key);
         });
-        if (changed) persistLocal();
-        return changed;
+        if (!changedKeys.length) return false;
+        persistLocal();
+        if (cloudReady && !skipCloud) {
+          const patch = {};
+          changedKeys.forEach((key) => {
+            patch[key] = dayPayload(key);
+          });
+          journalRef().child("days").update(patch).catch(cloudError);
+        }
+        return true;
       }
 
       function pullGarminSteps() {
@@ -1369,10 +1377,15 @@
               if (frequentIds.length) payload.frequentTypes = frequentIds;
               journalRef().set(payload).catch(cloudError);
             }
+            pullGarminSteps();
             return;
           }
           applyCloud(value);
-        }, cloudError);
+          pullGarminSteps();
+        }, (error) => {
+          cloudError(error);
+          pullGarminSteps();
+        });
       }
 
       weeksEl.addEventListener("click", (event) => {
@@ -1613,7 +1626,7 @@
       persistLocal();
       render();
       connectCloud();
-      pullGarminSteps();
+      if (!firebaseConfigured()) pullGarminSteps();
     })();
   </script>
 </body>
