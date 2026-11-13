@@ -1593,6 +1593,8 @@
         if (gain) next.elevationGainM = Math.round(gain);
         const loss = bounded(raw.elevationLossM, 1, 20000);
         if (loss) next.elevationLossM = Math.round(loss);
+        const peak = bounded(raw.maxElevationM, 1, 9000);
+        if (peak) next.maxElevationM = Math.round(peak);
         const laps = bounded(raw.laps, 1, 500);
         if (laps) next.laps = Math.round(laps);
         return Object.keys(next).length ? next : null;
@@ -1677,6 +1679,7 @@
         if (stats.maxHr) lines.push(["Максимальный пульс", String(stats.maxHr)]);
         if (stats.avgSpeed) lines.push(["Средняя скорость", formatSpeed(stats.avgSpeed)]);
         if (stats.maxSpeed) lines.push(["Максимальная скорость", formatSpeed(stats.maxSpeed)]);
+        if (stats.maxElevationM) lines.push(["Максимальная высота", `${formatCount(stats.maxElevationM)} м`]);
         if (stats.elevationGainM) lines.push(["Набор высоты", `${formatCount(stats.elevationGainM)} м`]);
         if (stats.elevationLossM) lines.push(["Спуск", `${formatCount(stats.elevationLossM)} м`]);
         if (stats.laps && LAP_LABEL[item.typeId]) lines.push([LAP_LABEL[item.typeId], String(stats.laps)]);

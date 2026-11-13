@@ -344,6 +344,9 @@ def activity_stats(row: dict, type_id: str) -> dict[str, object]:
     loss = as_int(row.get("elevationLoss"), 1, 20000)
     if loss:
         stats["elevationLossM"] = loss
+    peak = as_int(row.get("maxElevation"), 1, 9000)
+    if peak:
+        stats["maxElevationM"] = peak
     if type_id in LAP_TYPES:
         laps = as_int(row.get("lapCount"), 1, 500)
         if laps:
