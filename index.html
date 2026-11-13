@@ -329,6 +329,11 @@
       padding: 12px 8px 8px;
     }
     .empty.hidden { display: none; }
+    .empty.has-workouts {
+      min-height: 0;
+      padding-top: 4px;
+    }
+    .empty.has-workouts p { display: none; }
 
     .empty img {
       width: 210px;
@@ -566,7 +571,7 @@
     .kind-meta svg { color: #636366; }
 
     .day-workouts {
-      flex: 1;
+      flex: 0 0 auto;
       display: flex;
       flex-direction: column;
       gap: 8px;
@@ -785,16 +790,16 @@
       const CUSTOM_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.4 9.2h2.1l.7-2.2c.2-.6.8-1 1.4-1h1.1c.8 0 1.4.7 1.2 1.5L10.4 9.2h3.2l-.5-1.7c-.2-.8.4-1.5 1.2-1.5h1.1c.6 0 1.2.4 1.4 1l.7 2.2h2.1c.9 0 1.6.7 1.6 1.6v1.1c0 .9-.7 1.6-1.6 1.6h-2.1l-.7 2.2c-.2.6-.8 1-1.4 1h-1.1c-.8 0-1.4-.7-1.2-1.5l.5-1.7H10.4l.5 1.7c.2.8-.4 1.5-1.2 1.5H8.6c-.6 0-1.2-.4-1.4-1l-.7-2.2H4.4c-.9 0-1.6-.7-1.6-1.6v-1.1c0-.9.7-1.6 1.6-1.6z"/></svg>';
       const CATALOG_VERSION = 3;
       const KINDS = [
-        { id: "bike", name: "Велосипед", image: "./kind-bike.jpg?v=1" },
-        { id: "enduro", name: "Эндуро", image: "./kind-enduro.jpg?v=1" },
-        { id: "pool", name: "Бассейн", image: "./kind-pool.jpg?v=2" },
-        { id: "snowboard", name: "Сноуборд", image: "./kind-snowboard.jpg?v=2" },
-        { id: "wakeboard", name: "Вейкборд", image: "./kind-wakeboard.jpg?v=3" },
-        { id: "gym", name: "Зал", image: "./kind-gym.jpg?v=1" },
-        { id: "bars", name: "Турники", image: "./kind-bars.jpg?v=1" },
-        { id: "sup", name: "Сап-борд", image: "./kind-sup.jpg?v=1" },
-        { id: "run", name: "Бег", image: "./kind-run.jpg?v=1" },
-        { id: "beer", name: "Пивасик", image: "./kind-beer.jpg?v=1" }
+        { id: "bike", name: "Велосипед", image: "./kind-bike.jpg?v=1", mascot: "./mascot-bike.jpg?v=1" },
+        { id: "enduro", name: "Эндуро", image: "./kind-enduro.jpg?v=1", mascot: "./mascot-enduro.jpg?v=1" },
+        { id: "pool", name: "Бассейн", image: "./kind-pool.jpg?v=2", mascot: "./mascot-pool.jpg?v=1" },
+        { id: "snowboard", name: "Сноуборд", image: "./kind-snowboard.jpg?v=2", mascot: "./mascot-snowboard.jpg?v=1" },
+        { id: "wakeboard", name: "Вейкборд", image: "./kind-wakeboard.jpg?v=3", mascot: "./mascot-wakeboard.jpg?v=1" },
+        { id: "gym", name: "Зал", image: "./kind-gym.jpg?v=1", mascot: "./doge-lift.jpg?v=3" },
+        { id: "bars", name: "Турники", image: "./kind-bars.jpg?v=1", mascot: "./mascot-bars.jpg?v=1" },
+        { id: "sup", name: "Сап-борд", image: "./kind-sup.jpg?v=1", mascot: "./mascot-sup.jpg?v=1" },
+        { id: "run", name: "Бег", image: "./kind-run.jpg?v=1", mascot: "./mascot-run.jpg?v=1" },
+        { id: "beer", name: "Пивасик", image: "./kind-beer.jpg?v=1", mascot: "./mascot-beer.jpg?v=1" }
       ];
       const KIND_IDS = new Set(KINDS.map((row) => row.id));
 
@@ -1041,6 +1046,26 @@
         return icon;
       }
 
+      function mascotFor(workouts, gymDay) {
+        for (let i = workouts.length - 1; i >= 0; i--) {
+          const kind = typeById(workouts[i].typeId);
+          if (kind && kind.mascot) return kind.mascot;
+        }
+        return gymDay ? "./doge-lift.jpg?v=3" : "./cheems-rest.jpg?v=2";
+      }
+
+      function fitMascot() {
+        emptyState.classList.remove("hidden");
+        if (!emptyState.classList.contains("has-workouts")) return;
+        const measure = () => {
+          const room = window.innerHeight - emptyState.getBoundingClientRect().top - 20;
+          emptyState.classList.toggle("hidden", room < 168);
+        };
+        requestAnimationFrame(measure);
+        clearTimeout(fitMascot.timer);
+        fitMascot.timer = setTimeout(measure, 340);
+      }
+
       function workoutsFor(key) {
         const row = days[key];
         return row && Array.isArray(row.workouts) ? row.workouts : [];
@@ -1162,6 +1187,7 @@
         calendarEl.classList.toggle("expanded", monthExpanded);
         handleBtn.setAttribute("aria-expanded", monthExpanded ? "true" : "false");
         handleBtn.setAttribute("aria-label", monthExpanded ? "Свернуть месяц" : "Показать месяц");
+        fitMascot();
       }
 
       function shiftMonth(delta) {
@@ -1300,12 +1326,11 @@
 
         const weekday = selectedDate.getDay();
         const gymDay = weekday === 2 || weekday === 4;
-        emptyBear.src = gymDay ? "./doge-lift.jpg?v=3" : "./cheems-rest.jpg?v=2";
-        emptyText.textContent = gymDay ? "День зала" : "День отдыха";
-
         const workouts = workoutsFor(selectedKey);
         const hasWorkouts = workouts.length > 0;
-        emptyState.classList.toggle("hidden", hasWorkouts);
+        emptyBear.src = mascotFor(workouts, gymDay);
+        emptyText.textContent = gymDay ? "День зала" : "День отдыха";
+        emptyState.classList.toggle("has-workouts", hasWorkouts);
         dayWorkoutsEl.classList.toggle("hidden", !hasWorkouts);
         if (hasWorkouts) {
           dayWorkoutsEl.replaceChildren(...workouts.map((item) => {
@@ -1330,6 +1355,7 @@
         }
 
         renderKinds();
+        fitMascot();
       }
 
       function kindRow(kind, options) {
@@ -1805,6 +1831,7 @@
       seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length);
       persistLocal();
       render();
+      window.addEventListener("resize", fitMascot);
       connectCloud();
       if (!firebaseConfigured()) pullGarminSteps();
     })();
