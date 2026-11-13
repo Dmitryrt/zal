@@ -151,6 +151,10 @@
       padding-bottom: 6px;
     }
 
+    .weekdays span.today {
+      color: var(--ring);
+    }
+
     .week-row {
       max-height: 0;
       opacity: 0;
@@ -628,7 +632,7 @@
 
     <section class="calendar" id="calendar" aria-label="Календарь">
       <div class="month-label" id="month-label"></div>
-      <div class="weekdays" aria-hidden="true">
+      <div class="weekdays" id="weekdays" aria-hidden="true">
         <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
       </div>
       <div id="weeks"></div>
@@ -779,6 +783,7 @@
 
       const calendarEl = document.getElementById("calendar");
       const weeksEl = document.getElementById("weeks");
+      const weekdayEls = [...document.querySelectorAll("#weekdays span")];
       const monthLabel = document.getElementById("month-label");
       const handleBtn = document.getElementById("handle");
       const stepsCard = document.getElementById("steps-card");
@@ -1153,6 +1158,8 @@
         const today = todayKey();
         const weeks = monthWeeks(selected.getFullYear(), selected.getMonth());
         monthLabel.textContent = `${MONTHS[selected.getMonth()]} ${selected.getFullYear()}`;
+        const todayWeekday = (new Date().getDay() + 6) % 7;
+        weekdayEls.forEach((el, index) => el.classList.toggle("today", index === todayWeekday));
 
         weeksEl.replaceChildren(...weeks.map((week) => {
           const row = document.createElement("div");
