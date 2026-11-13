@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull recent daily steps and active calories from Garmin Personal API."""
+"""Pull recent daily steps, distance and active calories from Garmin Personal API."""
 
 from __future__ import annotations
 
@@ -67,6 +67,17 @@ def as_int(value: object, lo: int, hi: int) -> int | None:
     return count
 
 
+DISTANCE_KEYS = (
+    "totalDistanceMeters",
+    "totalDistanceInMeters",
+    "distanceInMeters",
+    "distanceMeters",
+    "totalDistance",
+    "total_distance",
+    "distance",
+)
+
+
 def put_day(days: dict[str, int], key: object, steps: object) -> None:
     if not isinstance(key, str) or not DATE_RE.match(key):
         return
@@ -76,33 +87,54 @@ def put_day(days: dict[str, int], key: object, steps: object) -> None:
     days[key] = count
 
 
-def parse_steps(payload: object) -> dict[str, int]:
-    rows: list[object] = []
+def step_rows(payload: object) -> list[object]:
     if isinstance(payload, list):
-        rows = payload
-    elif isinstance(payload, dict):
-        values = payload.get("values")
-        if isinstance(values, list):
-            rows = values
-        elif isinstance(values, dict):
-            days = {}
-            for key, value in values.items():
-                steps = value if isinstance(value, (int, float)) else (
-                    value.get("totalSteps") or value.get("total_steps") or value.get("steps")
-                    if isinstance(value, dict) else None
-                )
-                put_day(days, key, steps)
-            return days
-        elif "calendarDate" in payload or "calendar_date" in payload:
-            rows = [payload]
-    days: dict[str, int] = {}
-    for row in rows:
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    values = payload.get("values")
+    if isinstance(values, list):
+        return values
+    if isinstance(values, dict):
+        rows = []
+        for key, value in values.items():
+            if isinstance(value, dict):
+                rows.append({"calendarDate": key, **value})
+            else:
+                rows.append({"calendarDate": key, "totalSteps": value})
+        return rows
+    if "calendarDate" in payload or "calendar_date" in payload:
+        return [payload]
+    return []
+
+
+def pick_distance_m(row: dict) -> int | None:
+    blobs = [row]
+    movement = row.get("movement")
+    if isinstance(movement, dict):
+        blobs.append(movement)
+    for blob in blobs:
+        for key in DISTANCE_KEYS:
+            meters = as_int(blob.get(key), 0, 200000)
+            if meters is not None:
+                return meters
+    return None
+
+
+def parse_steps_and_distance(payload: object) -> tuple[dict[str, int], dict[str, int]]:
+    steps: dict[str, int] = {}
+    distance: dict[str, int] = {}
+    for row in step_rows(payload):
         if not isinstance(row, dict):
             continue
         key = row.get("calendarDate") or row.get("calendar_date") or row.get("date")
-        steps = row.get("totalSteps") or row.get("total_steps") or row.get("steps")
-        put_day(days, key, steps)
-    return days
+        put_day(steps, key, row.get("totalSteps") or row.get("total_steps") or row.get("steps"))
+        if not isinstance(key, str) or not DATE_RE.match(key):
+            continue
+        meters = pick_distance_m(row)
+        if meters is not None:
+            distance[key] = meters
+    return steps, distance
 
 
 def pick_calories(row: dict) -> int | None:
@@ -133,8 +165,9 @@ def summary_rows(payload: object) -> list[object]:
     return []
 
 
-def parse_calories(payload: object) -> dict[str, int]:
+def parse_calories(payload: object) -> tuple[dict[str, int], dict[str, int]]:
     days: dict[str, int] = {}
+    distance: dict[str, int] = {}
     for row in summary_rows(payload):
         if not isinstance(row, dict):
             continue
@@ -142,22 +175,24 @@ def parse_calories(payload: object) -> dict[str, int]:
         if not isinstance(key, str) or not DATE_RE.match(key):
             continue
         count = pick_calories(row)
-        if count is None:
-            continue
-        days[key] = count
-    return days
+        if count is not None:
+            days[key] = count
+        meters = pick_distance_m(row)
+        if meters is not None:
+            distance[key] = meters
+    return days, distance
 
 
-def fetch_steps(token: str, start: str, end: str) -> dict[str, int]:
+def fetch_steps(token: str, start: str, end: str) -> tuple[dict[str, int], dict[str, int]]:
     raw = request(
         "GET",
         BASE + STEPS_PATH.format(start=start, end=end),
         {"Accept": "application/json", "Authorization": f"Bearer {token}"},
     )
-    return parse_steps(json.loads(raw))
+    return parse_steps_and_distance(json.loads(raw))
 
 
-def fetch_calories(token: str, start: str, end: str) -> dict[str, int]:
+def fetch_calories(token: str, start: str, end: str) -> tuple[dict[str, int], dict[str, int]]:
     query = urllib.parse.urlencode({"startDate": start, "endDate": end})
     raw = request(
         "GET",
@@ -167,13 +202,20 @@ def fetch_calories(token: str, start: str, end: str) -> dict[str, int]:
     return parse_calories(json.loads(raw))
 
 
-def merge_days(steps: dict[str, int], calories: dict[str, int]) -> dict[str, dict[str, int]]:
+def merge_days(
+    steps: dict[str, int],
+    calories: dict[str, int],
+    distance: dict[str, int],
+) -> dict[str, dict[str, int]]:
     days: dict[str, dict[str, int]] = {}
     for key, count in steps.items():
         days[key] = {"steps": count}
     for key, count in calories.items():
         days.setdefault(key, {})
         days[key]["activeCalories"] = count
+    for key, count in distance.items():
+        days.setdefault(key, {})
+        days[key]["distanceM"] = count
     return dict(sorted(days.items()))
 
 
@@ -185,11 +227,12 @@ def main() -> None:
     today = datetime.now(MSK).date()
     token = bearer_token(api_key)
     steps: dict[str, int] = {}
+    distance: dict[str, int] = {}
     last_error = None
     for span in (27, 20, 13):
         start = (today - timedelta(days=span)).isoformat()
         try:
-            steps = fetch_steps(token, start, today.isoformat())
+            steps, distance = fetch_steps(token, start, today.isoformat())
             last_error = None
             break
         except SystemExit as error:
@@ -200,20 +243,22 @@ def main() -> None:
     calories: dict[str, int] = {}
     try:
         start = min(steps) if steps else (today - timedelta(days=27)).isoformat()
-        calories = fetch_calories(token, start, today.isoformat())
+        calories, extra_distance = fetch_calories(token, start, today.isoformat())
+        for key, meters in extra_distance.items():
+            distance.setdefault(key, meters)
     except SystemExit as error:
         print(f"Calories skipped: {error}", file=sys.stderr)
 
     payload = {
         "updatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "days": merge_days(steps, calories),
+        "days": merge_days(steps, calories, distance),
     }
     path = os.path.abspath(OUT_FILE)
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
     print(
-        f"Wrote {len(steps)} step days and {len(calories)} calorie days to {path}",
+        f"Wrote {len(steps)} step days, {len(distance)} distance days and {len(calories)} calorie days to {path}",
         file=sys.stderr,
     )
 

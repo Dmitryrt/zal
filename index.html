@@ -296,6 +296,7 @@
     }
 
     .stat-icon.calorie { color: var(--ring); }
+    .stat-icon.distance { color: #64d2ff; }
 
     .stat-copy {
       flex: 1;
@@ -657,6 +658,19 @@
         </span>
         <span class="value" id="steps-value">0 / 8 000</span>
       </button>
+      <button class="stat-card" id="distance-card" type="button">
+        <span class="stat-icon distance" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="19" r="2.5"/>
+            <path d="M8.6 19h8.1a3.3 3.3 0 1 0 0-6.6H8.2a3.3 3.3 0 1 1 0-6.6H15"/>
+            <circle cx="18" cy="5" r="2.5"/>
+          </svg>
+        </span>
+        <span class="stat-copy">
+          <span class="label" id="distance-label">Дистанция</span>
+        </span>
+        <span class="value" id="distance-value">0,0 км</span>
+      </button>
       <button class="stat-card" id="calories-card" type="button">
         <span class="stat-icon calorie" aria-hidden="true">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -702,6 +716,19 @@
       </label>
       <p class="sheet-hint">После «Готово» Garmin шаги за этот день больше не перезапишет.</p>
       <button class="sheet-save" id="steps-save" type="button">Готово</button>
+    </div>
+  </div>
+
+  <div class="backdrop hidden" id="distance-backdrop">
+    <div class="sheet" role="dialog" aria-labelledby="distance-title">
+      <div class="grab"></div>
+      <h2 id="distance-title">Дистанция</h2>
+      <label>
+        Километры за выбранный день
+        <input id="distance-input" type="number" min="0" max="200" step="0.1" inputmode="decimal">
+      </label>
+      <p class="sheet-hint">После «Готово» Garmin дистанцию за этот день больше не перезапишет.</p>
+      <button class="sheet-save" id="distance-save" type="button">Готово</button>
     </div>
   </div>
 
@@ -791,6 +818,12 @@
       const stepsValue = document.getElementById("steps-value");
       const caloriesLabel = document.getElementById("calories-label");
       const caloriesValue = document.getElementById("calories-value");
+      const distanceCard = document.getElementById("distance-card");
+      const distanceLabel = document.getElementById("distance-label");
+      const distanceValue = document.getElementById("distance-value");
+      const distanceBackdrop = document.getElementById("distance-backdrop");
+      const distanceInput = document.getElementById("distance-input");
+      const distanceTitle = document.getElementById("distance-title");
       const toastEl = document.getElementById("toast");
       const settingsBackdrop = document.getElementById("settings-backdrop");
       const stepsBackdrop = document.getElementById("steps-backdrop");
@@ -888,13 +921,37 @@
         return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
       }
 
+      function distanceFor(key) {
+        const n = Number(days[key] && days[key].distanceM);
+        return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+      }
+
+      function formatKm(meters) {
+        return `${(meters / 1000).toFixed(1).replace(".", ",")} км`;
+      }
+
+      function currentRecord(key, extra) {
+        const row = days[key] || {};
+        return Object.assign({
+          steps: stepsFor(key),
+          workouts: workoutsFor(key),
+          activeCalories: caloriesFor(key),
+          distanceM: distanceFor(key),
+          manualSteps: row.manualSteps,
+          manualCalories: row.manualCalories,
+          manualDistance: row.manualDistance
+        }, extra || {});
+      }
+
       function stampDay(key, record) {
         const steps = record.steps || 0;
         const workouts = record.workouts || [];
         const calories = record.activeCalories || 0;
+        const distanceM = record.distanceM || 0;
         const manualSteps = Boolean(record.manualSteps);
         const manualCalories = Boolean(record.manualCalories);
-        if (!steps && !workouts.length && !calories) {
+        const manualDistance = Boolean(record.manualDistance);
+        if (!steps && !workouts.length && !calories && !distanceM) {
           delete days[key];
           return;
         }
@@ -902,8 +959,10 @@
         if (steps) next.steps = steps;
         if (workouts.length) next.workouts = workouts;
         if (calories) next.activeCalories = calories;
+        if (distanceM) next.distanceM = distanceM;
         if (manualSteps) next.manualSteps = true;
         if (manualCalories) next.manualCalories = true;
+        if (manualDistance) next.manualDistance = true;
         days[key] = next;
       }
 
@@ -1016,8 +1075,11 @@
         if (workouts.length) payload.workouts = workouts;
         const calories = caloriesFor(key);
         if (calories) payload.activeCalories = calories;
+        const distanceM = distanceFor(key);
+        if (distanceM) payload.distanceM = distanceM;
         if (row.manualSteps) payload.manualSteps = true;
         if (row.manualCalories) payload.manualCalories = true;
+        if (row.manualDistance) payload.manualDistance = true;
         return Object.keys(payload).length ? payload : null;
       }
 
@@ -1075,7 +1137,7 @@
           if (!row || !Array.isArray(row.workouts)) return;
           row.workouts = row.workouts.filter((item) => KIND_IDS.has(item.typeId));
           if (!row.workouts.length) delete row.workouts;
-          if (!row.steps && !row.workouts && !row.activeCalories) delete days[key];
+          if (!row.steps && !row.workouts && !row.activeCalories && !row.distanceM) delete days[key];
         });
       }
 
@@ -1153,6 +1215,20 @@
         requestAnimationFrame(() => caloriesInput.focus());
       }
 
+      function openDistanceEditor(key) {
+        selectedKey = key;
+        render();
+        const date = parseKey(selectedKey);
+        const isToday = selectedKey === todayKey();
+        distanceTitle.textContent = isToday
+          ? "Дистанция сегодня"
+          : `Дистанция, ${date.getDate()} ${MONTHS_GEN[date.getMonth()]}`;
+        const km = distanceFor(selectedKey) / 1000;
+        distanceInput.value = km ? String(Math.round(km * 10) / 10) : "";
+        openSheet(distanceBackdrop);
+        requestAnimationFrame(() => distanceInput.focus());
+      }
+
       function render() {
         const selected = parseKey(selectedKey);
         const today = todayKey();
@@ -1217,6 +1293,10 @@
           ? "Активные калории"
           : `Активные калории, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
         caloriesValue.textContent = `${formatCount(caloriesFor(selectedKey))} ккал`;
+        distanceLabel.textContent = selectedKey === today
+          ? "Дистанция"
+          : `Дистанция, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
+        distanceValue.textContent = formatKm(distanceFor(selectedKey));
 
         const weekday = selectedDate.getDay();
         const gymDay = weekday === 2 || weekday === 4;
@@ -1304,20 +1384,13 @@
       }
 
       function addWorkout(kind) {
-        const row = days[selectedKey] || {};
         const workouts = workoutsFor(selectedKey).slice();
         workouts.push({
           id: uid(),
           typeId: kind.id,
           name: kind.name
         });
-        stampDay(selectedKey, {
-          steps: stepsFor(selectedKey),
-          workouts,
-          activeCalories: caloriesFor(selectedKey),
-          manualSteps: row.manualSteps,
-          manualCalories: row.manualCalories
-        });
+        stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
         writeDay(selectedKey);
         closeSheet(pickerEl);
         closeSheet(catalogEl);
@@ -1352,7 +1425,8 @@
         if (value && typeof value === "object") {
           return {
             steps: Number(value.steps),
-            activeCalories: Number(value.activeCalories)
+            activeCalories: Number(value.activeCalories),
+            distanceM: Number(value.distanceM)
           };
         }
         return {};
@@ -1369,19 +1443,25 @@
           const workouts = workoutsFor(key);
           let steps = stepsFor(key);
           let calories = caloriesFor(key);
+          let distanceM = distanceFor(key);
           if (!row.manualSteps && Number.isFinite(incoming.steps) && incoming.steps >= 0 && incoming.steps <= 200000) {
             steps = Math.round(incoming.steps);
           }
           if (!row.manualCalories && Number.isFinite(incoming.activeCalories) && incoming.activeCalories >= 0 && incoming.activeCalories <= 20000) {
             calories = Math.round(incoming.activeCalories);
           }
-          if (steps === stepsFor(key) && calories === caloriesFor(key)) return;
+          if (!row.manualDistance && Number.isFinite(incoming.distanceM) && incoming.distanceM >= 0 && incoming.distanceM <= 200000) {
+            distanceM = Math.round(incoming.distanceM);
+          }
+          if (steps === stepsFor(key) && calories === caloriesFor(key) && distanceM === distanceFor(key)) return;
           stampDay(key, {
             steps,
             workouts,
             activeCalories: calories,
+            distanceM,
             manualSteps: row.manualSteps,
-            manualCalories: row.manualCalories
+            manualCalories: row.manualCalories,
+            manualDistance: row.manualDistance
           });
           changedKeys.push(key);
         });
@@ -1543,6 +1623,9 @@
       caloriesCard.addEventListener("click", () => {
         openCaloriesEditor(selectedKey);
       });
+      distanceCard.addEventListener("click", () => {
+        openDistanceEditor(selectedKey);
+      });
 
       document.getElementById("steps-save").addEventListener("click", () => {
         const raw = String(stepsInput.value || "").trim();
@@ -1552,13 +1635,7 @@
           return;
         }
         const steps = Math.round(n);
-        stampDay(selectedKey, {
-          steps,
-          workouts: workoutsFor(selectedKey),
-          activeCalories: caloriesFor(selectedKey),
-          manualSteps: true,
-          manualCalories: Boolean((days[selectedKey] || {}).manualCalories)
-        });
+        stampDay(selectedKey, currentRecord(selectedKey, { steps, manualSteps: true }));
         writeDay(selectedKey);
         closeSheet(stepsBackdrop);
         toast("Шаги записаны вручную — Garmin их не перезапишет");
@@ -1572,17 +1649,30 @@
           toast("Введите калории от 0 до 20 000");
           return;
         }
-        const row = days[selectedKey] || {};
-        stampDay(selectedKey, {
-          steps: stepsFor(selectedKey),
-          workouts: workoutsFor(selectedKey),
+        stampDay(selectedKey, currentRecord(selectedKey, {
           activeCalories: Math.round(n),
-          manualSteps: row.manualSteps,
           manualCalories: true
-        });
+        }));
         writeDay(selectedKey);
         closeSheet(caloriesBackdrop);
         toast("Калории записаны вручную — Garmin их не перезапишет");
+        render();
+      });
+
+      document.getElementById("distance-save").addEventListener("click", () => {
+        const raw = String(distanceInput.value || "").trim().replace(",", ".");
+        const n = raw === "" ? 0 : Number(raw);
+        if (!Number.isFinite(n) || n < 0 || n > 200) {
+          toast("Введите километры от 0 до 200");
+          return;
+        }
+        stampDay(selectedKey, currentRecord(selectedKey, {
+          distanceM: Math.round(n * 1000),
+          manualDistance: true
+        }));
+        writeDay(selectedKey);
+        closeSheet(distanceBackdrop);
+        toast("Дистанция записана вручную — Garmin её не перезапишет");
         render();
       });
 
@@ -1612,6 +1702,9 @@
       });
       caloriesBackdrop.addEventListener("click", (event) => {
         if (event.target === caloriesBackdrop) closeSheet(caloriesBackdrop);
+      });
+      distanceBackdrop.addEventListener("click", (event) => {
+        if (event.target === distanceBackdrop) closeSheet(distanceBackdrop);
       });
 
       document.getElementById("heart-btn").addEventListener("click", () => {
@@ -1663,14 +1756,9 @@
       dayWorkoutsEl.addEventListener("click", (event) => {
         const btn = event.target.closest(".remove");
         if (!btn || !btn.dataset.id) return;
-        const row = days[selectedKey] || {};
-        stampDay(selectedKey, {
-          steps: stepsFor(selectedKey),
-          workouts: workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id),
-          activeCalories: caloriesFor(selectedKey),
-          manualSteps: row.manualSteps,
-          manualCalories: row.manualCalories
-        });
+        stampDay(selectedKey, currentRecord(selectedKey, {
+          workouts: workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id)
+        }));
         writeDay(selectedKey);
         render();
       });
@@ -1685,7 +1773,11 @@
           closeSheet(catalogEl);
           return;
         }
-        if (!caloriesBackdrop.classList.contains("hidden")) closeSheet(caloriesBackdrop);
+        if (!caloriesBackdrop.classList.contains("hidden")) {
+          closeSheet(caloriesBackdrop);
+          return;
+        }
+        if (!distanceBackdrop.classList.contains("hidden")) closeSheet(distanceBackdrop);
       });
 
       goalInput.addEventListener("keydown", (event) => {
@@ -1696,6 +1788,9 @@
       });
       caloriesInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter") document.getElementById("calories-save").click();
+      });
+      distanceInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") document.getElementById("distance-save").click();
       });
       const stored = loadStored();
       journalId = idFromUrl();
