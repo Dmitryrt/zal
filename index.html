@@ -455,6 +455,22 @@
       line-height: 1.35;
     }
 
+    .workout-stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-top: 1px solid #3a3a3c;
+      font-size: 1rem;
+    }
+    .workout-stat .label { color: var(--muted); }
+    .workout-stat .value { font-weight: 650; text-align: right; }
+    .workout-empty {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     .catalog {
       position: fixed;
       inset: 0;
@@ -601,6 +617,7 @@
       align-items: center;
       gap: 12px;
       text-align: left;
+      cursor: pointer;
     }
     .day-workout .pic {
       width: 52px;
@@ -760,6 +777,14 @@
     </div>
   </div>
 
+  <div class="backdrop hidden" id="workout-backdrop">
+    <div class="sheet" role="dialog" aria-labelledby="workout-title">
+      <div class="grab"></div>
+      <h2 id="workout-title">Тренировка</h2>
+      <div id="workout-stats"></div>
+    </div>
+  </div>
+
   <div class="catalog hidden" id="catalog" role="dialog" aria-label="Тренировки">
     <div class="catalog-inner">
       <button class="catalog-grab" id="catalog-close" type="button" aria-label="Закрыть">
@@ -843,6 +868,9 @@
       const settingsBackdrop = document.getElementById("settings-backdrop");
       const stepsBackdrop = document.getElementById("steps-backdrop");
       const caloriesBackdrop = document.getElementById("calories-backdrop");
+      const workoutBackdrop = document.getElementById("workout-backdrop");
+      const workoutTitle = document.getElementById("workout-title");
+      const workoutStats = document.getElementById("workout-stats");
       const goalInput = document.getElementById("goal-input");
       const stepsInput = document.getElementById("steps-input");
       const stepsTitle = document.getElementById("steps-title");
@@ -953,7 +981,8 @@
           distanceM: distanceFor(key),
           manualSteps: row.manualSteps,
           manualCalories: row.manualCalories,
-          manualDistance: row.manualDistance
+          manualDistance: row.manualDistance,
+          dismissedGarmin: Array.isArray(row.dismissedGarmin) ? row.dismissedGarmin : []
         }, extra || {});
       }
 
@@ -965,7 +994,10 @@
         const manualSteps = Boolean(record.manualSteps);
         const manualCalories = Boolean(record.manualCalories);
         const manualDistance = Boolean(record.manualDistance);
-        if (!steps && !workouts.length && !calories && !distanceM) {
+        const dismissed = Array.isArray(record.dismissedGarmin)
+          ? record.dismissedGarmin.map(String).filter(Boolean)
+          : [];
+        if (!steps && !workouts.length && !calories && !distanceM && !dismissed.length) {
           delete days[key];
           return;
         }
@@ -977,6 +1009,7 @@
         if (manualSteps) next.manualSteps = true;
         if (manualCalories) next.manualCalories = true;
         if (manualDistance) next.manualDistance = true;
+        if (dismissed.length) next.dismissedGarmin = dismissed;
         days[key] = next;
       }
 
@@ -1120,6 +1153,9 @@
         if (row.manualSteps) payload.manualSteps = true;
         if (row.manualCalories) payload.manualCalories = true;
         if (row.manualDistance) payload.manualDistance = true;
+        if (Array.isArray(row.dismissedGarmin) && row.dismissedGarmin.length) {
+          payload.dismissedGarmin = row.dismissedGarmin;
+        }
         return Object.keys(payload).length ? payload : null;
       }
 
@@ -1177,7 +1213,9 @@
           if (!row || !Array.isArray(row.workouts)) return;
           row.workouts = row.workouts.filter((item) => KIND_IDS.has(item.typeId));
           if (!row.workouts.length) delete row.workouts;
-          if (!row.steps && !row.workouts && !row.activeCalories && !row.distanceM) delete days[key];
+          if (!row.steps && !row.workouts && !row.activeCalories && !row.distanceM && !(row.dismissedGarmin && row.dismissedGarmin.length)) {
+            delete days[key];
+          }
         });
       }
 
@@ -1350,6 +1388,7 @@
           dayWorkoutsEl.replaceChildren(...workouts.map((item) => {
             const row = document.createElement("div");
             row.className = "day-workout";
+            row.dataset.id = item.id;
             const kind = typeById(item.typeId);
             const pic = kindPicture(kind, 52);
             const name = document.createElement("span");
@@ -1503,7 +1542,8 @@
             distanceM,
             manualSteps: row.manualSteps,
             manualCalories: row.manualCalories,
-            manualDistance: row.manualDistance
+            manualDistance: row.manualDistance,
+            dismissedGarmin: row.dismissedGarmin
           });
           changedKeys.push(key);
         });
@@ -1519,11 +1559,163 @@
         return true;
       }
 
+      function dismissedFor(key) {
+        const row = days[key];
+        return Array.isArray(row && row.dismissedGarmin) ? row.dismissedGarmin.map(String) : [];
+      }
+
+      function bounded(value, lo, hi) {
+        const number = Number(value);
+        if (!Number.isFinite(number) || number < lo || number > hi) return null;
+        return number;
+      }
+
+      function cleanStats(raw) {
+        if (!raw || typeof raw !== "object") return null;
+        const next = {};
+        if (typeof raw.start === "string" && /^\d{2}:\d{2}$/.test(raw.start)) next.start = raw.start;
+        const duration = bounded(raw.durationSec, 1, 86400);
+        if (duration) next.durationSec = Math.round(duration);
+        const distance = bounded(raw.distanceM, 1, 500000);
+        if (distance) next.distanceM = Math.round(distance);
+        const calories = bounded(raw.calories, 1, 20000);
+        if (calories) next.calories = Math.round(calories);
+        const avgHr = bounded(raw.avgHr, 30, 230);
+        if (avgHr) next.avgHr = Math.round(avgHr);
+        const maxHr = bounded(raw.maxHr, 30, 230);
+        if (maxHr) next.maxHr = Math.round(maxHr);
+        const avgSpeed = bounded(raw.avgSpeed, 0.1, 120);
+        if (avgSpeed) next.avgSpeed = Math.round(avgSpeed * 100) / 100;
+        const maxSpeed = bounded(raw.maxSpeed, 0.1, 120);
+        if (maxSpeed) next.maxSpeed = Math.round(maxSpeed * 100) / 100;
+        const gain = bounded(raw.elevationGainM, 1, 20000);
+        if (gain) next.elevationGainM = Math.round(gain);
+        const loss = bounded(raw.elevationLossM, 1, 20000);
+        if (loss) next.elevationLossM = Math.round(loss);
+        const laps = bounded(raw.laps, 1, 500);
+        if (laps) next.laps = Math.round(laps);
+        return Object.keys(next).length ? next : null;
+      }
+
+      function applyGarminWorkouts(payload) {
+        const list = payload && payload.activities;
+        if (!Array.isArray(list)) return false;
+        const changed = [];
+        list.forEach((activity) => {
+          if (!activity || typeof activity !== "object") return;
+          const key = activity.date;
+          const typeId = activity.typeId;
+          const garminId = activity.garminId == null ? "" : String(activity.garminId);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(key || "") || !KIND_IDS.has(typeId) || !/^\d+$/.test(garminId)) return;
+          if (dismissedFor(key).includes(garminId)) return;
+          const kind = typeById(typeId);
+          const stats = cleanStats(activity.stats);
+          const workouts = workoutsFor(key).map((item) => Object.assign({}, item));
+          let target = workouts.find((item) => String(item.garminId || "") === garminId);
+          if (!target) {
+            target = workouts.find((item) => item.typeId === typeId && !item.garminId);
+            if (target) target.garminId = garminId;
+          }
+          if (target) {
+            if (JSON.stringify(target.stats || null) === JSON.stringify(stats) && target.name === kind.name) return;
+            target.stats = stats;
+            target.name = kind.name;
+          } else {
+            workouts.push({
+              id: `g${garminId}`,
+              garminId,
+              typeId,
+              name: kind.name,
+              stats
+            });
+          }
+          stampDay(key, currentRecord(key, { workouts }));
+          changed.push(key);
+        });
+        if (!changed.length) return false;
+        persistLocal();
+        if (cloudReady && !skipCloud) {
+          const patch = {};
+          changed.forEach((key) => {
+            patch[key] = dayPayload(key);
+          });
+          journalRef().child("days").update(patch).catch(cloudError);
+        }
+        return true;
+      }
+
+      const LAP_LABEL = {
+        snowboard: "Спуски",
+        wakeboard: "Заезды",
+        enduro: "Круги",
+        pool: "Отрезки"
+      };
+
+      function formatDuration(seconds) {
+        const total = Math.round(seconds);
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        if (hours && minutes) return `${hours} ч ${minutes} мин`;
+        if (hours) return `${hours} ч`;
+        if (minutes) return `${minutes} мин`;
+        return `${total} с`;
+      }
+
+      function formatSpeed(metersPerSecond) {
+        return `${(metersPerSecond * 3.6).toFixed(1).replace(".", ",")} км/ч`;
+      }
+
+      function workoutLines(item) {
+        const stats = item.stats || {};
+        const lines = [];
+        if (stats.start) lines.push(["Начало", stats.start]);
+        if (stats.durationSec) lines.push(["Время", formatDuration(stats.durationSec)]);
+        if (stats.distanceM) lines.push(["Дистанция", formatKm(stats.distanceM)]);
+        if (stats.calories) lines.push(["Калории", `${formatCount(stats.calories)} ккал`]);
+        if (stats.avgHr) lines.push(["Средний пульс", String(stats.avgHr)]);
+        if (stats.maxHr) lines.push(["Максимальный пульс", String(stats.maxHr)]);
+        if (stats.avgSpeed) lines.push(["Средняя скорость", formatSpeed(stats.avgSpeed)]);
+        if (stats.maxSpeed) lines.push(["Максимальная скорость", formatSpeed(stats.maxSpeed)]);
+        if (stats.elevationGainM) lines.push(["Набор высоты", `${formatCount(stats.elevationGainM)} м`]);
+        if (stats.elevationLossM) lines.push(["Спуск", `${formatCount(stats.elevationLossM)} м`]);
+        if (stats.laps && LAP_LABEL[item.typeId]) lines.push([LAP_LABEL[item.typeId], String(stats.laps)]);
+        return lines;
+      }
+
+      function openWorkout(item) {
+        const kind = typeById(item.typeId);
+        workoutTitle.textContent = item.name || (kind && kind.name) || "Тренировка";
+        const lines = workoutLines(item);
+        workoutStats.replaceChildren();
+        if (!lines.length) {
+          const empty = document.createElement("p");
+          empty.className = "workout-empty";
+          empty.textContent = "Garmin пока не прислал цифры по этой тренировке";
+          workoutStats.append(empty);
+        } else {
+          lines.forEach(([label, value]) => {
+            const row = document.createElement("div");
+            row.className = "workout-stat";
+            const name = document.createElement("span");
+            name.className = "label";
+            name.textContent = label;
+            const number = document.createElement("span");
+            number.className = "value";
+            number.textContent = value;
+            row.append(name, number);
+            workoutStats.append(row);
+          });
+        }
+        openSheet(workoutBackdrop);
+      }
+
       function pullGarminSteps() {
         fetch(`./garmin-steps.json?t=${Date.now()}`)
           .then((res) => (res.ok ? res.json() : null))
           .then((payload) => {
-            if (applyGarminSteps(payload)) render();
+            const stepsChanged = applyGarminSteps(payload);
+            const workoutsChanged = applyGarminWorkouts(payload);
+            if (stepsChanged || workoutsChanged) render();
           })
           .catch(() => {});
       }
@@ -1748,6 +1940,9 @@
       distanceBackdrop.addEventListener("click", (event) => {
         if (event.target === distanceBackdrop) closeSheet(distanceBackdrop);
       });
+      workoutBackdrop.addEventListener("click", (event) => {
+        if (event.target === workoutBackdrop) closeSheet(workoutBackdrop);
+      });
 
       document.getElementById("heart-btn").addEventListener("click", () => {
         renderKinds();
@@ -1797,12 +1992,25 @@
       });
       dayWorkoutsEl.addEventListener("click", (event) => {
         const btn = event.target.closest(".remove");
-        if (!btn || !btn.dataset.id) return;
-        stampDay(selectedKey, currentRecord(selectedKey, {
-          workouts: workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id)
-        }));
-        writeDay(selectedKey);
-        render();
+        if (btn && btn.dataset.id) {
+          const current = workoutsFor(selectedKey);
+          const removed = current.find((item) => item.id === btn.dataset.id);
+          const dismissed = dismissedFor(selectedKey).slice();
+          if (removed && removed.garminId && !dismissed.includes(String(removed.garminId))) {
+            dismissed.push(String(removed.garminId));
+          }
+          stampDay(selectedKey, currentRecord(selectedKey, {
+            workouts: current.filter((item) => item.id !== btn.dataset.id),
+            dismissedGarmin: dismissed
+          }));
+          writeDay(selectedKey);
+          render();
+          return;
+        }
+        const row = event.target.closest(".day-workout");
+        if (!row || !row.dataset.id) return;
+        const item = workoutsFor(selectedKey).find((entry) => entry.id === row.dataset.id);
+        if (item) openWorkout(item);
       });
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
@@ -1819,7 +2027,11 @@
           closeSheet(caloriesBackdrop);
           return;
         }
-        if (!distanceBackdrop.classList.contains("hidden")) closeSheet(distanceBackdrop);
+        if (!distanceBackdrop.classList.contains("hidden")) {
+          closeSheet(distanceBackdrop);
+          return;
+        }
+        if (!workoutBackdrop.classList.contains("hidden")) closeSheet(workoutBackdrop);
       });
 
       goalInput.addEventListener("keydown", (event) => {

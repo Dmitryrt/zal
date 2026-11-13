@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull recent daily steps, distance and active calories from Garmin Personal API."""
+"""Pull recent daily steps, distance, calories and mapped workouts from Garmin."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ BASE = "https://personal.connectapi.garmin.com"
 TOKEN_PATH = "/personalapitoken-service/personal-api/personal-api-key/token"
 STEPS_PATH = "/usersummary-service/stats/steps/daily/{start}/{end}"
 SUMMARIES_PATH = "/usersummary-service/v2/dailysummaries"
+ACTIVITIES_PATH = "/activitylist-service/activities/search/activities"
 OUT_FILE = os.path.join(os.path.dirname(__file__), "..", "garmin-steps.json")
 MSK = timezone(timedelta(hours=3))
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -202,6 +203,200 @@ def fetch_calories(token: str, start: str, end: str) -> tuple[dict[str, int], di
     return parse_calories(json.loads(raw))
 
 
+KIND_BY_TYPE = {
+    "cycling": "bike",
+    "road_biking": "bike",
+    "road_cycling": "bike",
+    "mountain_biking": "bike",
+    "downhill_mountain_biking": "bike",
+    "enduro_mountain_biking": "bike",
+    "e_enduro_mountain_biking": "bike",
+    "e_biking": "bike",
+    "e_mountain_biking": "bike",
+    "gravel_cycling": "bike",
+    "cyclocross": "bike",
+    "bmx": "bike",
+    "indoor_cycling": "bike",
+    "virtual_ride": "bike",
+    "virtual_cycling": "bike",
+    "track_cycling": "bike",
+    "recumbent_cycling": "bike",
+    "handcycling": "bike",
+    "indoor_handcycling": "bike",
+    "motocross": "enduro",
+    "lap_swimming": "pool",
+    "pool_swim": "pool",
+    "resort_snowboarding": "snowboard",
+    "backcountry_snowboarding": "snowboard",
+    "wakeboarding": "wakeboard",
+    "strength_training": "gym",
+    "stand_up_paddleboarding": "sup",
+    "running": "run",
+    "street_running": "run",
+    "trail_running": "run",
+    "treadmill_running": "run",
+    "track_running": "run",
+    "indoor_running": "run",
+    "virtual_running": "run",
+    "ultra_running": "run",
+    "obstacle_course_racing": "run",
+}
+LAP_TYPES = {"snowboard", "wakeboard", "enduro", "pool"}
+
+
+def activity_rows(payload: object) -> list[object]:
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    for key in ("activities", "activityList", "items"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+    return []
+
+
+def activity_type_key(row: dict) -> str:
+    for field in ("activityType", "activityTypeDTO"):
+        value = row.get(field)
+        if isinstance(value, dict):
+            key = value.get("typeKey") or value.get("type_key")
+            if isinstance(key, str):
+                return key
+        elif isinstance(value, str):
+            return value
+    key = row.get("activityTypeKey") or row.get("typeKey")
+    return key if isinstance(key, str) else ""
+
+
+def activity_day(row: dict) -> str | None:
+    local = row.get("startTimeLocal") or row.get("startTimeGMT") or ""
+    if isinstance(local, str) and DATE_RE.match(local[:10]):
+        return local[:10]
+    return None
+
+
+def activity_clock(row: dict) -> str | None:
+    local = row.get("startTimeLocal") or ""
+    if isinstance(local, str) and len(local) >= 16 and re.fullmatch(r"\d{2}:\d{2}", local[11:16]):
+        return local[11:16]
+    return None
+
+
+def garmin_id(row: dict) -> str:
+    value = row.get("activityId")
+    if value is None:
+        value = row.get("activity_id")
+    if isinstance(value, bool) or value is None:
+        return ""
+    if isinstance(value, float):
+        value = int(value)
+    text = str(value).strip()
+    if not text.isdigit():
+        return ""
+    return text
+
+
+def as_float(value: object, lo: float, hi: float) -> float | None:
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number < lo or number > hi:
+        return None
+    return round(number, 2)
+
+
+def activity_stats(row: dict, type_id: str) -> dict[str, object]:
+    stats: dict[str, object] = {}
+    clock = activity_clock(row)
+    if clock:
+        stats["start"] = clock
+    duration = as_int(row.get("duration") or row.get("movingDuration"), 1, 86400)
+    if duration:
+        stats["durationSec"] = duration
+    meters = as_int(row.get("distance"), 1, 500000)
+    if meters:
+        stats["distanceM"] = meters
+    calories = as_int(row.get("calories"), 1, 20000)
+    if calories:
+        stats["calories"] = calories
+    avg_hr = as_int(row.get("averageHR"), 30, 230)
+    if avg_hr:
+        stats["avgHr"] = avg_hr
+    max_hr = as_int(row.get("maxHR"), 30, 230)
+    if max_hr:
+        stats["maxHr"] = max_hr
+    avg_speed = as_float(row.get("averageSpeed"), 0.1, 120)
+    if avg_speed:
+        stats["avgSpeed"] = avg_speed
+    max_speed = as_float(row.get("maxSpeed"), 0.1, 120)
+    if max_speed:
+        stats["maxSpeed"] = max_speed
+    gain = as_int(row.get("elevationGain"), 1, 20000)
+    if gain:
+        stats["elevationGainM"] = gain
+    loss = as_int(row.get("elevationLoss"), 1, 20000)
+    if loss:
+        stats["elevationLossM"] = loss
+    if type_id in LAP_TYPES:
+        laps = as_int(row.get("lapCount"), 1, 500)
+        if laps:
+            stats["laps"] = laps
+    return stats
+
+
+def compact_activities(payload: object) -> list[dict[str, object]]:
+    seen: set[str] = set()
+    activities: list[dict[str, object]] = []
+    for row in activity_rows(payload):
+        if not isinstance(row, dict):
+            continue
+        type_id = KIND_BY_TYPE.get(activity_type_key(row))
+        day = activity_day(row)
+        activity_id = garmin_id(row)
+        if not type_id or not day or not activity_id or activity_id in seen:
+            continue
+        seen.add(activity_id)
+        item: dict[str, object] = {
+            "garminId": activity_id,
+            "date": day,
+            "typeId": type_id,
+        }
+        stats = activity_stats(row, type_id)
+        if stats:
+            item["stats"] = stats
+        activities.append(item)
+    activities.sort(key=lambda item: (str(item["date"]), str(item["garminId"])))
+    return activities
+
+
+def fetch_activities(token: str, start: str, end: str) -> list[dict[str, object]]:
+    rows: list[object] = []
+    start_index = 0
+    limit = 20
+    while start_index < 200:
+        query = urllib.parse.urlencode({
+            "start": start_index,
+            "limit": limit,
+            "startDate": start,
+            "endDate": end,
+        })
+        raw = request(
+            "GET",
+            f"{BASE}{ACTIVITIES_PATH}?{query}",
+            {"Accept": "application/json", "Authorization": f"Bearer {token}"},
+        )
+        page = activity_rows(json.loads(raw))
+        rows.extend(page)
+        if len(page) < limit:
+            break
+        start_index += limit
+    return compact_activities(rows)
+
+
 def merge_days(
     steps: dict[str, int],
     calories: dict[str, int],
@@ -249,16 +444,24 @@ def main() -> None:
     except SystemExit as error:
         print(f"Calories skipped: {error}", file=sys.stderr)
 
+    activities: list[dict[str, object]] = []
+    try:
+        start = min(steps) if steps else (today - timedelta(days=27)).isoformat()
+        activities = fetch_activities(token, start, today.isoformat())
+    except SystemExit as error:
+        print(f"Workouts skipped: {error}", file=sys.stderr)
+
     payload = {
         "updatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "days": merge_days(steps, calories, distance),
+        "activities": activities,
     }
     path = os.path.abspath(OUT_FILE)
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
     print(
-        f"Wrote {len(steps)} step days, {len(distance)} distance days and {len(calories)} calorie days to {path}",
+        f"Wrote {len(steps)} step days, {len(distance)} distance days, {len(calories)} calorie days and {len(activities)} workouts to {path}",
         file=sys.stderr,
     )
 
