@@ -260,33 +260,58 @@
       background: var(--line);
     }
 
-    .steps-card {
+    .stats {
       margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .stat-card {
       width: 100%;
       border: 0;
       background: var(--card);
       color: var(--ink);
       border-radius: 16px;
-      padding: 14px 16px;
+      padding: 12px 16px 12px 12px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 12px;
       text-align: left;
     }
 
-    .steps-card .label {
+    .stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: var(--fill);
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      flex-shrink: 0;
+    }
+
+    .stat-icon.calorie { color: var(--ring); }
+
+    .stat-copy {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .stat-card .label {
       color: var(--muted);
       font-size: 0.86rem;
     }
 
-    .steps-card .value {
+    .stat-card .value {
       font-size: 1.05rem;
       font-weight: 650;
       letter-spacing: -0.02em;
+      flex-shrink: 0;
     }
 
-    .steps-card .value.done { color: var(--ring); }
-    .steps-card .value.over { color: var(--ring-over); }
+    .stat-card .value.done { color: var(--ring); }
+    .stat-card .value.over { color: var(--ring-over); }
 
     .empty {
       flex: 1;
@@ -607,12 +632,32 @@
       </div>
     </section>
 
-    <button class="steps-card" id="steps-card" type="button">
-      <span>
-        <span class="label" id="steps-label">Шаги</span>
-      </span>
-      <span class="value" id="steps-value">0 / 8 000</span>
-    </button>
+    <div class="stats">
+      <button class="stat-card" id="steps-card" type="button">
+        <span class="stat-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 16v-2.38C4 11.5 3 10.5 3 8c0-2.5 1.5-6 4.5-6C9.4 2 10 3.8 10 5.5 10 8.6 8 11.2 8 14.2V16a2 2 0 1 1-4 0Z"/>
+            <path d="M20 20v-2.38c0-2.12 1-3.12 1-5.62 0-2.5-1.5-6-4.5-6C14.6 6 14 7.8 14 9.5c0 3.1 2 5.7 2 8.7V20a2 2 0 1 0 4 0Z"/>
+            <path d="M16 17h4M4 13h4"/>
+          </svg>
+        </span>
+        <span class="stat-copy">
+          <span class="label" id="steps-label">Шаги</span>
+        </span>
+        <span class="value" id="steps-value">0 / 8 000</span>
+      </button>
+      <div class="stat-card" id="calories-card">
+        <span class="stat-icon calorie" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M13.2 2.4c.2 2.4 1.7 4.1 3.2 6.1 1.4 1.8 2.6 3.5 2.6 5.8a7 7 0 1 1-14 0c0-2.6 1.6-4.8 3.2-7 1.5-2 2.8-3.7 3.4-4.9.4 1.4 1.1 2.6 1.6 3.8Z"/>
+          </svg>
+        </span>
+        <span class="stat-copy">
+          <span class="label" id="calories-label">Активные калории</span>
+        </span>
+        <span class="value" id="calories-value">0 ккал</span>
+      </div>
+    </div>
 
     <div class="day-workouts hidden" id="day-workouts"></div>
 
@@ -718,6 +763,8 @@
       const stepsCard = document.getElementById("steps-card");
       const stepsLabel = document.getElementById("steps-label");
       const stepsValue = document.getElementById("steps-value");
+      const caloriesLabel = document.getElementById("calories-label");
+      const caloriesValue = document.getElementById("calories-value");
       const toastEl = document.getElementById("toast");
       const settingsBackdrop = document.getElementById("settings-backdrop");
       const stepsBackdrop = document.getElementById("steps-backdrop");
@@ -804,6 +851,28 @@
         const value = row && row.steps;
         const n = Number(value);
         return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+      }
+
+      function caloriesFor(key) {
+        const n = Number(days[key] && days[key].activeCalories);
+        return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+      }
+
+      function stampDay(key, record) {
+        const steps = record.steps || 0;
+        const workouts = record.workouts || [];
+        const calories = record.activeCalories || 0;
+        const manual = Boolean(record.manualSteps);
+        if (!steps && !workouts.length && !calories) {
+          delete days[key];
+          return;
+        }
+        const next = {};
+        if (steps) next.steps = steps;
+        if (workouts.length) next.workouts = workouts;
+        if (calories) next.activeCalories = calories;
+        if (manual) next.manualSteps = true;
+        days[key] = next;
       }
 
       function progressFor(key) {
@@ -913,6 +982,8 @@
         const workouts = workoutsFor(key);
         if (steps) payload.steps = steps;
         if (workouts.length) payload.workouts = workouts;
+        const calories = caloriesFor(key);
+        if (calories) payload.activeCalories = calories;
         if (row.manualSteps) payload.manualSteps = true;
         return Object.keys(payload).length ? payload : null;
       }
@@ -971,7 +1042,7 @@
           if (!row || !Array.isArray(row.workouts)) return;
           row.workouts = row.workouts.filter((item) => KIND_IDS.has(item.typeId));
           if (!row.workouts.length) delete row.workouts;
-          if (!row.steps && !row.workouts) delete days[key];
+          if (!row.steps && !row.workouts && !row.activeCalories) delete days[key];
         });
       }
 
@@ -1094,6 +1165,10 @@
         stepsValue.textContent = `${formatCount(steps)} / ${formatCount(stepGoal)}`;
         stepsValue.classList.toggle("done", done && !over);
         stepsValue.classList.toggle("over", over);
+        caloriesLabel.textContent = selectedKey === today
+          ? "Активные калории"
+          : `Активные калории, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
+        caloriesValue.textContent = `${formatCount(caloriesFor(selectedKey))} ккал`;
 
         const weekday = selectedDate.getDay();
         const gymDay = weekday === 2 || weekday === 4;
@@ -1188,10 +1263,12 @@
           typeId: kind.id,
           name: kind.name
         });
-        days[selectedKey] = {};
-        if (row.steps) days[selectedKey].steps = row.steps;
-        days[selectedKey].workouts = workouts;
-        if (row.manualSteps) days[selectedKey].manualSteps = true;
+        stampDay(selectedKey, {
+          steps: stepsFor(selectedKey),
+          workouts,
+          activeCalories: caloriesFor(selectedKey),
+          manualSteps: row.manualSteps
+        });
         writeDay(selectedKey);
         closeSheet(pickerEl);
         closeSheet(catalogEl);
@@ -1219,28 +1296,43 @@
         seedLocal = false;
       }
 
+      function parseGarminDay(value) {
+        if (typeof value === "number" || typeof value === "string") {
+          return { steps: Number(value) };
+        }
+        if (value && typeof value === "object") {
+          return {
+            steps: Number(value.steps),
+            activeCalories: Number(value.activeCalories)
+          };
+        }
+        return {};
+      }
+
       function applyGarminSteps(payload) {
         const map = payload && payload.days;
         if (!map || typeof map !== "object") return false;
         let changed = false;
         Object.keys(map).forEach((key) => {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
-          const steps = Math.round(Number(map[key]));
-          if (!Number.isFinite(steps) || steps < 0 || steps > 200000) return;
+          const incoming = parseGarminDay(map[key]);
           const row = days[key] || {};
-          if (row.manualSteps) return;
           const workouts = workoutsFor(key);
-          if ((row.steps || 0) === steps) return;
-          if (!steps && !workouts.length) {
-            if (days[key]) {
-              delete days[key];
-              changed = true;
-            }
-            return;
+          let steps = stepsFor(key);
+          let calories = caloriesFor(key);
+          if (!row.manualSteps && Number.isFinite(incoming.steps) && incoming.steps >= 0 && incoming.steps <= 200000) {
+            steps = Math.round(incoming.steps);
           }
-          days[key] = {};
-          if (steps) days[key].steps = steps;
-          if (workouts.length) days[key].workouts = workouts;
+          if (Number.isFinite(incoming.activeCalories) && incoming.activeCalories >= 0 && incoming.activeCalories <= 20000) {
+            calories = Math.round(incoming.activeCalories);
+          }
+          if (steps === stepsFor(key) && calories === caloriesFor(key)) return;
+          stampDay(key, {
+            steps,
+            workouts,
+            activeCalories: calories,
+            manualSteps: row.manualSteps
+          });
           changed = true;
         });
         if (changed) persistLocal();
@@ -1394,14 +1486,12 @@
           return;
         }
         const steps = Math.round(n);
-        const workouts = workoutsFor(selectedKey);
-        if (!steps && !workouts.length) delete days[selectedKey];
-        else {
-          days[selectedKey] = {};
-          if (steps) days[selectedKey].steps = steps;
-          if (workouts.length) days[selectedKey].workouts = workouts;
-          days[selectedKey].manualSteps = true;
-        }
+        stampDay(selectedKey, {
+          steps,
+          workouts: workoutsFor(selectedKey),
+          activeCalories: caloriesFor(selectedKey),
+          manualSteps: true
+        });
         writeDay(selectedKey);
         closeSheet(stepsBackdrop);
         render();
@@ -1482,14 +1572,12 @@
         const btn = event.target.closest(".remove");
         if (!btn || !btn.dataset.id) return;
         const row = days[selectedKey] || {};
-        const workouts = workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id);
-        if (!row.steps && !workouts.length) delete days[selectedKey];
-        else {
-          days[selectedKey] = {};
-          if (row.steps) days[selectedKey].steps = row.steps;
-          if (workouts.length) days[selectedKey].workouts = workouts;
-          if (row.manualSteps) days[selectedKey].manualSteps = true;
-        }
+        stampDay(selectedKey, {
+          steps: stepsFor(selectedKey),
+          workouts: workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id),
+          activeCalories: caloriesFor(selectedKey),
+          manualSteps: row.manualSteps
+        });
         writeDay(selectedKey);
         render();
       });

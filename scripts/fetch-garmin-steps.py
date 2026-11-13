@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull recent daily steps from Garmin Personal API into garmin-steps.json."""
+"""Pull recent daily steps and active calories from Garmin Personal API."""
 
 from __future__ import annotations
 
@@ -8,15 +8,24 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
 BASE = "https://personal.connectapi.garmin.com"
 TOKEN_PATH = "/personalapitoken-service/personal-api/personal-api-key/token"
 STEPS_PATH = "/usersummary-service/stats/steps/daily/{start}/{end}"
+SUMMARIES_PATH = "/usersummary-service/v2/dailysummaries"
 OUT_FILE = os.path.join(os.path.dirname(__file__), "..", "garmin-steps.json")
 MSK = timezone(timedelta(hours=3))
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+CALORIE_KEYS = (
+    "burnedActive",
+    "burned_active",
+    "activeKilocalories",
+    "activeCalories",
+    "activeKcal",
+)
 
 
 def request(method: str, url: str, headers: dict[str, str]) -> str:
@@ -44,6 +53,27 @@ def bearer_token(api_key: str) -> str:
     if "." not in body:
         raise SystemExit("Garmin token response was not a JWT")
     return body
+
+
+def as_int(value: object, lo: int, hi: int) -> int | None:
+    if value is None:
+        return None
+    try:
+        count = int(round(float(value)))
+    except (TypeError, ValueError):
+        return None
+    if count < lo or count > hi:
+        return None
+    return count
+
+
+def put_day(days: dict[str, int], key: object, steps: object) -> None:
+    if not isinstance(key, str) or not DATE_RE.match(key):
+        return
+    count = as_int(steps, 0, 200000)
+    if count is None:
+        return
+    days[key] = count
 
 
 def parse_steps(payload: object) -> dict[str, int]:
@@ -75,27 +105,76 @@ def parse_steps(payload: object) -> dict[str, int]:
     return days
 
 
-def put_day(days: dict[str, int], key: object, steps: object) -> None:
-    if not isinstance(key, str) or not DATE_RE.match(key):
-        return
-    if steps is None:
-        return
-    try:
-        count = int(round(float(steps)))
-    except (TypeError, ValueError):
-        return
-    if count < 0 or count > 200000:
-        return
-    days[key] = count
+def pick_calories(row: dict) -> int | None:
+    calories = row.get("calories")
+    if isinstance(calories, dict):
+        for key in CALORIE_KEYS:
+            count = as_int(calories.get(key), 0, 20000)
+            if count is not None:
+                return count
+    for key in CALORIE_KEYS:
+        count = as_int(row.get(key), 0, 20000)
+        if count is not None:
+            return count
+    return None
 
 
-def fetch_range(token: str, start: str, end: str) -> dict[str, int]:
+def summary_rows(payload: object) -> list[object]:
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    for key in ("data", "dailySummaries", "summaries", "values"):
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+    if "calendarDate" in payload or "calendar_date" in payload:
+        return [payload]
+    return []
+
+
+def parse_calories(payload: object) -> dict[str, int]:
+    days: dict[str, int] = {}
+    for row in summary_rows(payload):
+        if not isinstance(row, dict):
+            continue
+        key = row.get("calendarDate") or row.get("calendar_date") or row.get("date")
+        if not isinstance(key, str) or not DATE_RE.match(key):
+            continue
+        count = pick_calories(row)
+        if count is None:
+            continue
+        days[key] = count
+    return days
+
+
+def fetch_steps(token: str, start: str, end: str) -> dict[str, int]:
     raw = request(
         "GET",
         BASE + STEPS_PATH.format(start=start, end=end),
         {"Accept": "application/json", "Authorization": f"Bearer {token}"},
     )
     return parse_steps(json.loads(raw))
+
+
+def fetch_calories(token: str, start: str, end: str) -> dict[str, int]:
+    query = urllib.parse.urlencode({"startDate": start, "endDate": end})
+    raw = request(
+        "GET",
+        f"{BASE}{SUMMARIES_PATH}?{query}",
+        {"Accept": "application/json", "Authorization": f"Bearer {token}"},
+    )
+    return parse_calories(json.loads(raw))
+
+
+def merge_days(steps: dict[str, int], calories: dict[str, int]) -> dict[str, dict[str, int]]:
+    days: dict[str, dict[str, int]] = {}
+    for key, count in steps.items():
+        days[key] = {"steps": count}
+    for key, count in calories.items():
+        days.setdefault(key, {})
+        days[key]["activeCalories"] = count
+    return dict(sorted(days.items()))
 
 
 def main() -> None:
@@ -105,12 +184,12 @@ def main() -> None:
 
     today = datetime.now(MSK).date()
     token = bearer_token(api_key)
-    days: dict[str, int] = {}
+    steps: dict[str, int] = {}
     last_error = None
     for span in (27, 20, 13):
         start = (today - timedelta(days=span)).isoformat()
         try:
-            days = fetch_range(token, start, today.isoformat())
+            steps = fetch_steps(token, start, today.isoformat())
             last_error = None
             break
         except SystemExit as error:
@@ -118,15 +197,25 @@ def main() -> None:
     if last_error:
         raise last_error
 
+    calories: dict[str, int] = {}
+    try:
+        start = min(steps) if steps else (today - timedelta(days=27)).isoformat()
+        calories = fetch_calories(token, start, today.isoformat())
+    except SystemExit as error:
+        print(f"Calories skipped: {error}", file=sys.stderr)
+
     payload = {
         "updatedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "days": dict(sorted(days.items())),
+        "days": merge_days(steps, calories),
     }
     path = os.path.abspath(OUT_FILE)
     with open(path, "w", encoding="utf-8", newline="\n") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
-    print(f"Wrote {len(days)} days to {path}", file=sys.stderr)
+    print(
+        f"Wrote {len(steps)} step days and {len(calories)} calorie days to {path}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":
