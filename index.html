@@ -1081,9 +1081,19 @@
       }
 
       function typeCount(typeId) {
-        return Object.keys(days).reduce((sum, key) => {
-          return sum + workoutsFor(key).filter((item) => item.typeId === typeId).length;
-        }, 0);
+        const selected = parseKey(selectedKey);
+        const year = String(selected.getFullYear());
+        const month = `${year}-${pad(selected.getMonth() + 1)}`;
+        let inMonth = 0;
+        let inYear = 0;
+        Object.keys(days).forEach((key) => {
+          if (!key.startsWith(year)) return;
+          const matches = workoutsFor(key).filter((item) => item.typeId === typeId).length;
+          if (!matches) return;
+          inYear += matches;
+          if (key.startsWith(month)) inMonth += matches;
+        });
+        return { inMonth, inYear };
       }
 
       function marksFor(key) {
@@ -1378,8 +1388,10 @@
         const meta = document.createElement("span");
         meta.className = "kind-meta";
         if (showCount) {
+          const counts = typeCount(kind.id);
           const count = document.createElement("span");
-          count.textContent = String(typeCount(kind.id));
+          count.textContent = `${counts.inMonth}/${counts.inYear}`;
+          count.title = `${counts.inMonth} за месяц, ${counts.inYear} за год`;
           meta.append(count);
         }
         if (canRemove) {
