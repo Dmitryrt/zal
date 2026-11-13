@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Зал">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <title>Зал</title>
+  <style>
+    :root {
+      --bg: #000;
+      --card: #1c1c1e;
+      --fill: #2c2c2e;
+      --ink: #f5f5f7;
+      --muted: #8e8e93;
+      --dim: #636366;
+      --line: #3a3a3c;
+      --ring: #ff2d55;
+      --ring-over: #c2183a;
+      --ring-track: #3a3a3c;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+      overflow-x: hidden;
+      scrollbar-width: none;
+    }
+    body::-webkit-scrollbar { display: none; }
+
+    .app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100%;
+      min-height: 100dvh;
+      padding: max(12px, env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2.05rem;
+      letter-spacing: -0.04em;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ring);
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .icon-btn, .sheet-save, button {
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--fill);
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+    }
+
+    .icon-btn:active { transform: scale(0.96); }
+
+    .calendar {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 14px 8px 8px;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+    }
+
+    #weeks,
+    .month-label {
+      will-change: transform;
+    }
+
+    .calendar.swiping #weeks,
+    .calendar.swiping .month-label {
+      transition: none;
+    }
+
+    .month-label {
+      max-height: 0;
+      margin: 0;
+      overflow: hidden;
+      opacity: 0;
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: max-height 0.28s ease, opacity 0.2s ease, margin 0.28s ease;
+    }
+
+    .calendar.expanded .month-label {
+      max-height: 28px;
+      margin-bottom: 8px;
+      opacity: 1;
+    }
+
+    .weekdays,
+    .week-row {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      align-items: center;
+    }
+
+    .weekdays span {
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      padding-bottom: 6px;
+    }
+
+    .week-row {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition: max-height 0.3s ease, opacity 0.2s ease;
+    }
+
+    .week-row.current,
+    .calendar.expanded .week-row {
+      max-height: 52px;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .day {
+      width: 100%;
+      min-width: 0;
+      height: 48px;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      position: relative;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+    }
+
+    .day svg {
+      position: absolute;
+      inset: 0;
+      width: 44px;
+      height: 44px;
+      margin: auto;
+      pointer-events: none;
+    }
+
+    .day .num {
+      position: relative;
+      z-index: 1;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border-radius: 50%;
+    }
+
+    .day.has-marks .num {
+      width: 26px;
+      height: 26px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .day.has-marks .num img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .day.muted.has-marks .num { opacity: 0.45; }
+
+    .day.muted { color: var(--dim); }
+    .day.today:not(.selected) .num {
+      color: var(--ring);
+      font-weight: 650;
+    }
+    .day.selected:not(.has-marks) .num {
+      background: #fff;
+      color: #111;
+      font-weight: 650;
+    }
+
+    .handle-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0 4px;
+    }
+
+    .handle {
+      width: 40px;
+      height: 22px;
+      border: 0;
+      background: transparent;
+      display: grid;
+      place-items: center;
+    }
+
+    .handle span {
+      width: 36px;
+      height: 5px;
+      border-radius: 99px;
+      background: var(--line);
+    }
+
+    .steps-card {
+      margin-top: 12px;
+      width: 100%;
+      border: 0;
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-align: left;
+    }
+
+    .steps-card .label {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .steps-card .value {
+      font-size: 1.05rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .steps-card .value.done { color: var(--ring); }
+    .steps-card .value.over { color: var(--ring-over); }
+
+    .empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 220px;
+      text-align: center;
+      padding: 12px 8px 8px;
+    }
+    .empty.hidden { display: none; }
+
+    .empty img {
+      width: 210px;
+      height: 210px;
+      object-fit: contain;
+      filter: brightness(0.88) saturate(0.75);
+      pointer-events: none;
+    }
+
+    .empty p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(28px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(8px);
+      background: var(--fill);
+      color: var(--ink);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 30;
+      padding: 12px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+
+    .backdrop.hidden { display: none; }
+
+    .sheet {
+      width: min(430px, 100%);
+      background: #2c2c2e;
+      border-radius: 22px;
+      padding: 10px 18px 18px;
+    }
+
+    .sheet .grab {
+      width: 36px;
+      height: 5px;
+      border-radius: 99px;
+      background: #636366;
+      margin: 4px auto 14px;
+    }
+
+    .sheet h2 {
+      margin: 0 0 14px;
+      font-size: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .sheet label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .sheet input {
+      width: 100%;
+      margin-top: 8px;
+      height: 52px;
+      border: 0;
+      border-radius: 14px;
+      background: #1c1c1e;
+      color: var(--ink);
+      font-size: 1.15rem;
+      padding: 0 14px;
+      outline: none;
+    }
+
+    .sheet-save {
+      width: 100%;
+      margin-top: 14px;
+      height: 50px;
+      border: 0;
+      border-radius: 14px;
+      background: #fff;
+      color: #111;
+      font-weight: 650;
+    }
+
+    .sheet-save:active { transform: scale(0.99); }
+
+    .catalog {
+      position: fixed;
+      inset: 0;
+      z-index: 25;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      overflow: auto;
+      scrollbar-width: none;
+    }
+    .catalog::-webkit-scrollbar { display: none; }
+    .catalog.hidden { display: none; }
+    .catalog.picker { z-index: 26; }
+
+    .picker-title {
+      margin: 0 6px 12px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .catalog-hint {
+      margin: 18px 6px 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      text-align: center;
+    }
+    .catalog-hint.hidden { display: none; }
+
+    .catalog-inner {
+      width: min(430px, 100%);
+      min-height: 100%;
+      padding: max(8px, env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom));
+    }
+
+    .catalog-grab {
+      width: 36px;
+      height: 28px;
+      margin: 0 auto 8px;
+      border: 0;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      color: #636366;
+    }
+    .catalog-grab span {
+      width: 36px;
+      height: 5px;
+      border-radius: 99px;
+      background: #3a3a3c;
+    }
+
+    .catalog-create {
+      width: 100%;
+      height: 54px;
+      border: 0;
+      border-radius: 18px;
+      background: #2c2c2e;
+      color: #fff;
+      font-weight: 600;
+      font-size: 1.02rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .catalog-create:active { transform: scale(0.99); }
+    .catalog-create svg { flex-shrink: 0; }
+
+    .kind-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kind-row {
+      width: 100%;
+      min-height: 64px;
+      border: 0;
+      background: transparent;
+      padding: 8px 6px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #fff;
+      text-align: left;
+    }
+    .kind-row:active { opacity: 0.72; }
+    div.kind-row { cursor: pointer; }
+
+    .kind-icon {
+      width: 56px;
+      height: 56px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      color: #fff;
+    }
+    .kind-icon img {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .kind-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .kind-name {
+      flex: 1;
+      font-size: 1.08rem;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    .kind-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #8e8e93;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .kind-meta svg { color: #636366; }
+
+    .day-workouts {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .day-workouts.hidden { display: none; }
+
+    .day-workout {
+      width: 100%;
+      border: 0;
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 10px 12px 10px 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+    }
+    .day-workout .pic {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+    .day-workout .name {
+      flex: 1;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .remove {
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--fill);
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .remove:active { transform: scale(0.94); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Сегодня <span class="live-dot" aria-hidden="true"></span></h1>
+      <div class="header-actions">
+        <button class="icon-btn" id="heart-btn" type="button" aria-label="Избранное">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19.5 12.6 12 20l-7.5-7.4a4.5 4.5 0 0 1 6.4-6.3L12 7.7l1.1-1.4a4.5 4.5 0 0 1 6.4 6.3z"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="settings-btn" type="button" aria-label="Настройки">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.2.7.8 1.2 1.5 1.2H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1.1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="calendar" id="calendar" aria-label="Календарь">
+      <div class="month-label" id="month-label"></div>
+      <div class="weekdays" aria-hidden="true">
+        <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+      </div>
+      <div id="weeks"></div>
+      <div class="handle-wrap">
+        <button class="handle" id="handle" type="button" aria-label="Показать месяц" aria-expanded="false">
+          <span></span>
+        </button>
+      </div>
+    </section>
+
+    <button class="steps-card" id="steps-card" type="button">
+      <span>
+        <span class="label" id="steps-label">Шаги</span>
+      </span>
+      <span class="value" id="steps-value">0 / 8 000</span>
+    </button>
+
+    <div class="day-workouts hidden" id="day-workouts"></div>
+
+    <div class="empty" id="empty-state">
+      <img id="empty-bear" src="./cheems-rest.jpg?v=2" alt="" width="210" height="210">
+      <p id="empty-text">День отдыха</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <div class="backdrop hidden" id="settings-backdrop">
+    <div class="sheet" role="dialog" aria-labelledby="settings-title">
+      <div class="grab"></div>
+      <h2 id="settings-title">Настройки</h2>
+      <label>
+        Цель шагов в день
+        <input id="goal-input" type="number" min="1000" max="100000" step="500" inputmode="numeric">
+      </label>
+      <button class="sheet-save" id="goal-save" type="button">Сохранить</button>
+    </div>
+  </div>
+
+  <div class="backdrop hidden" id="steps-backdrop">
+    <div class="sheet" role="dialog" aria-labelledby="steps-title">
+      <div class="grab"></div>
+      <h2 id="steps-title">Шаги</h2>
+      <label>
+        За выбранный день
+        <input id="steps-input" type="number" min="0" max="200000" step="100" inputmode="numeric">
+      </label>
+      <button class="sheet-save" id="steps-save" type="button">Готово</button>
+    </div>
+  </div>
+
+  <div class="catalog hidden" id="catalog" role="dialog" aria-label="Тренировки">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="catalog-close" type="button" aria-label="Закрыть">
+        <span></span>
+      </button>
+      <button class="catalog-create" id="create-workout-btn" type="button">
+        Выбрать тренировку
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+      </button>
+      <div class="kind-list" id="kind-list"></div>
+      <p class="catalog-hint hidden" id="catalog-hint">Добавьте тренировки, которыми часто занимаетесь</p>
+    </div>
+  </div>
+
+  <div class="catalog picker hidden" id="kind-picker" role="dialog" aria-labelledby="picker-title">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="picker-close" type="button" aria-label="Назад">
+        <span></span>
+      </button>
+      <h2 class="picker-title" id="picker-title">Вид тренировки</h2>
+      <div class="kind-list" id="picker-list"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-database-compat.js"></script>
+  <script>
+    (function () {
+      const JOURNAL_ID = "zalsteps01";
+      const STORAGE_KEY = "zal-journal";
+      const DEFAULT_GOAL = 8000;
+      const RING_R = 15.2;
+      const RING = 2 * Math.PI * RING_R;
+      const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+      const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+      const CUSTOM_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.4 9.2h2.1l.7-2.2c.2-.6.8-1 1.4-1h1.1c.8 0 1.4.7 1.2 1.5L10.4 9.2h3.2l-.5-1.7c-.2-.8.4-1.5 1.2-1.5h1.1c.6 0 1.2.4 1.4 1l.7 2.2h2.1c.9 0 1.6.7 1.6 1.6v1.1c0 .9-.7 1.6-1.6 1.6h-2.1l-.7 2.2c-.2.6-.8 1-1.4 1h-1.1c-.8 0-1.4-.7-1.2-1.5l.5-1.7H10.4l.5 1.7c.2.8-.4 1.5-1.2 1.5H8.6c-.6 0-1.2-.4-1.4-1l-.7-2.2H4.4c-.9 0-1.6-.7-1.6-1.6v-1.1c0-.9.7-1.6 1.6-1.6z"/></svg>';
+      const CATALOG_VERSION = 3;
+      const KINDS = [
+        { id: "bike", name: "Велосипед", image: "./kind-bike.jpg?v=1" },
+        { id: "enduro", name: "Эндуро", image: "./kind-enduro.jpg?v=1" },
+        { id: "pool", name: "Бассейн", image: "./kind-pool.jpg?v=2" },
+        { id: "snowboard", name: "Сноуборд", image: "./kind-snowboard.jpg?v=2" },
+        { id: "wakeboard", name: "Вейкборд", image: "./kind-wakeboard.jpg?v=3" },
+        { id: "gym", name: "Зал", image: "./kind-gym.jpg?v=1" },
+        { id: "bars", name: "Турники", image: "./kind-bars.jpg?v=1" },
+        { id: "sup", name: "Сап-борд", image: "./kind-sup.jpg?v=1" },
+        { id: "run", name: "Бег", image: "./kind-run.jpg?v=1" },
+        { id: "beer", name: "Пивасик", image: "./kind-beer.jpg?v=1" }
+      ];
+      const KIND_IDS = new Set(KINDS.map((row) => row.id));
+
+      const firebaseConfig = {
+        apiKey: "",
+        authDomain: "",
+        databaseURL: "",
+        projectId: "",
+        storageBucket: "",
+        messagingSenderId: "",
+        appId: ""
+      };
+
+      const calendarEl = document.getElementById("calendar");
+      const weeksEl = document.getElementById("weeks");
+      const monthLabel = document.getElementById("month-label");
+      const handleBtn = document.getElementById("handle");
+      const stepsCard = document.getElementById("steps-card");
+      const stepsLabel = document.getElementById("steps-label");
+      const stepsValue = document.getElementById("steps-value");
+      const toastEl = document.getElementById("toast");
+      const settingsBackdrop = document.getElementById("settings-backdrop");
+      const stepsBackdrop = document.getElementById("steps-backdrop");
+      const goalInput = document.getElementById("goal-input");
+      const stepsInput = document.getElementById("steps-input");
+      const stepsTitle = document.getElementById("steps-title");
+      const emptyBear = document.getElementById("empty-bear");
+      const emptyText = document.getElementById("empty-text");
+      const emptyState = document.getElementById("empty-state");
+      const catalogEl = document.getElementById("catalog");
+      const kindList = document.getElementById("kind-list");
+      const dayWorkoutsEl = document.getElementById("day-workouts");
+      const pickerEl = document.getElementById("kind-picker");
+      const pickerList = document.getElementById("picker-list");
+      const catalogHint = document.getElementById("catalog-hint");
+
+      let journalId = JOURNAL_ID;
+      let stepGoal = DEFAULT_GOAL;
+      let days = {};
+      let frequentIds = [];
+      let selectedKey = todayKey();
+      let monthExpanded = false;
+      let cloudReady = false;
+      let skipCloud = false;
+      let seedLocal = false;
+      let toastTimer = 0;
+      let pull = null;
+      let swipe = null;
+      let suppressClick = false;
+
+      function firebaseConfigured() {
+        return Boolean(firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId);
+      }
+
+      function journalRef() {
+        return firebase.database().ref(`journals/${journalId}`);
+      }
+
+      function pad(n) {
+        return String(n).padStart(2, "0");
+      }
+
+      function toKey(date) {
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      }
+
+      function parseKey(key) {
+        const [y, m, d] = key.split("-").map(Number);
+        return new Date(y, m - 1, d);
+      }
+
+      function todayKey() {
+        return toKey(new Date());
+      }
+
+      function startOfWeek(date) {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const weekday = (d.getDay() + 6) % 7;
+        d.setDate(d.getDate() - weekday);
+        return d;
+      }
+
+      function monthWeeks(year, month) {
+        const start = startOfWeek(new Date(year, month, 1));
+        const weeks = [];
+        const cursor = new Date(start);
+        for (let w = 0; w < 6; w += 1) {
+          const week = [];
+          for (let i = 0; i < 7; i += 1) {
+            week.push(new Date(cursor));
+            cursor.setDate(cursor.getDate() + 1);
+          }
+          weeks.push(week);
+        }
+        return weeks;
+      }
+
+      function formatCount(n) {
+        return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+      }
+
+      function stepsFor(key) {
+        const row = days[key];
+        const value = row && row.steps;
+        const n = Number(value);
+        return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+      }
+
+      function progressFor(key) {
+        if (!stepGoal) return 0;
+        return Math.min(stepsFor(key) / stepGoal, 1);
+      }
+
+      function extraFor(key) {
+        if (!stepGoal) return 0;
+        const extra = (stepsFor(key) - stepGoal) / stepGoal;
+        return extra > 0 ? Math.min(extra, 1) : 0;
+      }
+
+      function idFromUrl() {
+        const queryId = new URLSearchParams(location.search).get("l");
+        if (queryId && /^[A-Za-z0-9_-]{8,32}$/.test(queryId)) return queryId;
+        return JOURNAL_ID;
+      }
+
+      function setUrl() {
+        const url = new URL(location.href);
+        url.searchParams.set("l", journalId);
+        const next = `${url.pathname}?${url.searchParams.toString()}`;
+        history.replaceState(null, "", next);
+      }
+
+      function loadStored() {
+        try {
+          return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || {};
+        } catch {
+          return {};
+        }
+      }
+
+      function persistLocal() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          journalId,
+          stepGoal,
+          days,
+          frequentIds,
+          catalogVersion: CATALOG_VERSION
+        }));
+        setUrl();
+      }
+
+      function uid() {
+        return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+      }
+
+      function typeById(id) {
+        return KINDS.find((row) => row.id === id);
+      }
+
+      function frequentKinds() {
+        return frequentIds.map(typeById).filter(Boolean);
+      }
+
+      function unusedKinds() {
+        return KINDS.filter((kind) => !frequentIds.includes(kind.id));
+      }
+
+      function kindPicture(kind, size) {
+        if (kind && kind.image) {
+          const img = document.createElement("img");
+          img.className = "pic";
+          img.src = kind.image;
+          img.alt = "";
+          img.width = size;
+          img.height = size;
+          return img;
+        }
+        const icon = document.createElement("span");
+        icon.className = "kind-icon";
+        icon.innerHTML = CUSTOM_ICON;
+        return icon;
+      }
+
+      function workoutsFor(key) {
+        const row = days[key];
+        return row && Array.isArray(row.workouts) ? row.workouts : [];
+      }
+
+      function typeCount(typeId) {
+        return Object.keys(days).reduce((sum, key) => {
+          return sum + workoutsFor(key).filter((item) => item.typeId === typeId).length;
+        }, 0);
+      }
+
+      function marksFor(key) {
+        const seen = new Set();
+        const marks = [];
+        workoutsFor(key).forEach((item) => {
+          if (seen.has(item.typeId)) return;
+          const kind = typeById(item.typeId);
+          if (!kind || !kind.image) return;
+          seen.add(item.typeId);
+          marks.push(kind);
+        });
+        return marks.slice(0, 1);
+      }
+
+      function dayPayload(key) {
+        const row = days[key];
+        if (!row) return null;
+        const payload = {};
+        const steps = stepsFor(key);
+        const workouts = workoutsFor(key);
+        if (steps) payload.steps = steps;
+        if (workouts.length) payload.workouts = workouts;
+        return Object.keys(payload).length ? payload : null;
+      }
+
+      function toast(message) {
+        toastEl.textContent = message;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+      }
+
+      function cloudError(error) {
+        console.error(error);
+        toast("Облако не приняло данные — проверьте Rules в Firebase");
+      }
+
+      function writeGoal() {
+        persistLocal();
+        if (!cloudReady || skipCloud) return;
+        journalRef().child("settings/stepGoal").set(stepGoal).catch(cloudError);
+      }
+
+      function writeDay(key) {
+        persistLocal();
+        if (!cloudReady || skipCloud) return;
+        const payload = dayPayload(key);
+        const ref = journalRef().child(`days/${key}`);
+        if (!payload) ref.remove().catch(cloudError);
+        else ref.set(payload).catch(cloudError);
+      }
+
+      function writeFrequent() {
+        persistLocal();
+        if (!cloudReady || skipCloud) return;
+        journalRef().child("frequentTypes").set(frequentIds).catch(cloudError);
+      }
+
+      function normalizeFrequent(value) {
+        const raw = Array.isArray(value)
+          ? value
+          : (value && typeof value === "object" ? Object.values(value) : []);
+        const seen = new Set();
+        const ids = [];
+        raw.forEach((item) => {
+          const id = String(item && item.id ? item.id : item);
+          if (!KIND_IDS.has(id) || seen.has(id)) return;
+          seen.add(id);
+          ids.push(id);
+        });
+        return ids;
+      }
+
+      function cleanDayWorkouts() {
+        Object.keys(days).forEach((key) => {
+          const row = days[key];
+          if (!row || !Array.isArray(row.workouts)) return;
+          row.workouts = row.workouts.filter((item) => KIND_IDS.has(item.typeId));
+          if (!row.workouts.length) delete row.workouts;
+          if (!row.steps && !row.workouts) delete days[key];
+        });
+      }
+
+      function ringSvg(progress, extra) {
+        const redOffset = RING * (1 - progress);
+        const overOffset = RING * (1 - extra);
+        const red = progress > 0
+          ? `<circle cx="20" cy="20" r="${RING_R}" fill="none" stroke="#ff2d55" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="${RING}" stroke-dashoffset="${redOffset}" transform="rotate(-90 20 20)"/>`
+          : "";
+        const over = extra > 0
+          ? `<circle cx="20" cy="20" r="${RING_R}" fill="none" stroke="#c2183a" stroke-width="3.1" stroke-linecap="round" stroke-dasharray="${RING}" stroke-dashoffset="${overOffset}" transform="rotate(-90 20 20)"/>`
+          : "";
+        return `<svg viewBox="0 0 40 40" aria-hidden="true">
+          <circle cx="20" cy="20" r="${RING_R}" fill="none" stroke="#3a3a3c" stroke-width="2.2"/>
+          ${red}
+          ${over}
+        </svg>`;
+      }
+
+      function setExpanded(next) {
+        monthExpanded = next;
+        calendarEl.classList.toggle("expanded", monthExpanded);
+        handleBtn.setAttribute("aria-expanded", monthExpanded ? "true" : "false");
+        handleBtn.setAttribute("aria-label", monthExpanded ? "Свернуть месяц" : "Показать месяц");
+      }
+
+      function shiftMonth(delta) {
+        const current = parseKey(selectedKey);
+        const day = current.getDate();
+        const next = new Date(current.getFullYear(), current.getMonth() + delta, 1);
+        const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        next.setDate(Math.min(day, last));
+        selectedKey = toKey(next);
+        setExpanded(true);
+        render();
+      }
+
+      function clearSwipeTransform() {
+        weeksEl.style.transform = "";
+        monthLabel.style.transform = "";
+        calendarEl.classList.remove("swiping");
+      }
+
+      function openSheet(el) {
+        el.classList.remove("hidden");
+      }
+
+      function closeSheet(el) {
+        el.classList.add("hidden");
+      }
+
+      function openStepsEditor(key) {
+        selectedKey = key;
+        render();
+        const date = parseKey(selectedKey);
+        const isToday = selectedKey === todayKey();
+        stepsTitle.textContent = isToday
+          ? "Шаги сегодня"
+          : `Шаги, ${date.getDate()} ${MONTHS_GEN[date.getMonth()]}`;
+        stepsInput.value = stepsFor(selectedKey) || "";
+        openSheet(stepsBackdrop);
+        requestAnimationFrame(() => stepsInput.focus());
+      }
+
+      function render() {
+        const selected = parseKey(selectedKey);
+        const today = todayKey();
+        const weeks = monthWeeks(selected.getFullYear(), selected.getMonth());
+        monthLabel.textContent = `${MONTHS[selected.getMonth()]} ${selected.getFullYear()}`;
+
+        weeksEl.replaceChildren(...weeks.map((week) => {
+          const row = document.createElement("div");
+          const hasSelected = week.some((date) => toKey(date) === selectedKey);
+          row.className = "week-row" + (hasSelected ? " current" : "");
+          week.forEach((date) => {
+            const key = toKey(date);
+            const muted = date.getMonth() !== selected.getMonth();
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "day"
+              + (muted ? " muted" : "")
+              + (key === today ? " today" : "")
+              + (key === selectedKey ? " selected" : "");
+            const steps = stepsFor(key);
+            const marks = marksFor(key);
+            const labelBits = [`${date.getDate()} ${MONTHS_GEN[date.getMonth()]}`];
+            if (key === today) labelBits.push("сегодня");
+            if (steps) labelBits.push(`${formatCount(steps)} шагов`);
+            const workoutNames = [...new Set(workoutsFor(key).map((item) => item.name).filter(Boolean))];
+            if (workoutNames.length) labelBits.push(workoutNames.join(", "));
+            btn.dataset.key = key;
+            btn.setAttribute("aria-label", labelBits.join(", "));
+            if (marks.length) btn.classList.add("has-marks");
+            btn.innerHTML = ringSvg(progressFor(key), extraFor(key));
+            const num = document.createElement("span");
+            num.className = "num";
+            if (marks.length) {
+              marks.forEach((kind) => {
+                const img = document.createElement("img");
+                img.src = kind.image;
+                img.alt = "";
+                num.appendChild(img);
+              });
+            } else {
+              num.textContent = date.getDate();
+            }
+            btn.appendChild(num);
+            row.appendChild(btn);
+          });
+          return row;
+        }));
+
+        const selectedDate = parseKey(selectedKey);
+        const steps = stepsFor(selectedKey);
+        const done = steps >= stepGoal && stepGoal > 0;
+        const over = steps > stepGoal && stepGoal > 0;
+        stepsLabel.textContent = selectedKey === today
+          ? "Шаги сегодня"
+          : `Шаги, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
+        stepsValue.textContent = `${formatCount(steps)} / ${formatCount(stepGoal)}`;
+        stepsValue.classList.toggle("done", done && !over);
+        stepsValue.classList.toggle("over", over);
+
+        const weekday = selectedDate.getDay();
+        const gymDay = weekday === 2 || weekday === 4;
+        emptyBear.src = gymDay ? "./doge-lift.jpg?v=3" : "./cheems-rest.jpg?v=2";
+        emptyText.textContent = gymDay ? "День зала" : "День отдыха";
+
+        const workouts = workoutsFor(selectedKey);
+        const hasWorkouts = workouts.length > 0;
+        emptyState.classList.toggle("hidden", hasWorkouts);
+        dayWorkoutsEl.classList.toggle("hidden", !hasWorkouts);
+        if (hasWorkouts) {
+          dayWorkoutsEl.replaceChildren(...workouts.map((item) => {
+            const row = document.createElement("div");
+            row.className = "day-workout";
+            const kind = typeById(item.typeId);
+            const pic = kindPicture(kind, 52);
+            const name = document.createElement("span");
+            name.className = "name";
+            name.textContent = item.name;
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "remove";
+            remove.dataset.id = item.id;
+            remove.setAttribute("aria-label", `Убрать ${item.name}`);
+            remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+            row.append(pic, name, remove);
+            return row;
+          }));
+        } else {
+          dayWorkoutsEl.replaceChildren();
+        }
+
+        renderKinds();
+      }
+
+      function kindRow(kind, options) {
+        const showCount = Boolean(options && options.showCount);
+        const canRemove = Boolean(options && options.canRemove);
+        const row = document.createElement(canRemove ? "div" : "button");
+        if (!canRemove) row.type = "button";
+        row.className = "kind-row";
+        row.dataset.id = kind.id;
+        const icon = document.createElement("span");
+        icon.className = "kind-icon";
+        icon.appendChild(kindPicture(kind, 56));
+        const name = document.createElement("span");
+        name.className = "kind-name";
+        name.textContent = kind.name;
+        const meta = document.createElement("span");
+        meta.className = "kind-meta";
+        if (showCount) {
+          const count = document.createElement("span");
+          count.textContent = String(typeCount(kind.id));
+          meta.append(count);
+        }
+        if (canRemove) {
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "remove";
+          remove.dataset.remove = kind.id;
+          remove.setAttribute("aria-label", `Убрать ${kind.name} из избранного`);
+          remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+          row.append(icon, name, meta, remove);
+          return row;
+        }
+        meta.insertAdjacentHTML("beforeend", '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>');
+        row.append(icon, name, meta);
+        return row;
+      }
+
+      function renderKinds() {
+        const frequent = frequentKinds();
+        kindList.replaceChildren(...frequent.map((kind) => kindRow(kind, { showCount: true, canRemove: true })));
+        catalogHint.classList.toggle("hidden", frequent.length > 0);
+      }
+
+      function renderPicker() {
+        pickerList.replaceChildren(...unusedKinds().map((kind) => kindRow(kind, { showCount: false })));
+      }
+
+      function removeFrequent(id) {
+        frequentIds = frequentIds.filter((item) => item !== id);
+        writeFrequent();
+        renderKinds();
+      }
+
+      function addWorkout(kind) {
+        const row = days[selectedKey] || {};
+        const workouts = workoutsFor(selectedKey).slice();
+        workouts.push({
+          id: uid(),
+          typeId: kind.id,
+          name: kind.name
+        });
+        days[selectedKey] = {};
+        if (row.steps) days[selectedKey].steps = row.steps;
+        days[selectedKey].workouts = workouts;
+        writeDay(selectedKey);
+        closeSheet(pickerEl);
+        closeSheet(catalogEl);
+        render();
+      }
+
+      function applyCloud(value) {
+        skipCloud = true;
+        if (value && value.settings && Number(value.settings.stepGoal) > 0) {
+          stepGoal = Math.round(Number(value.settings.stepGoal));
+        }
+        if (value && value.days && typeof value.days === "object") {
+          days = value.days;
+        } else if (value && !value.days) {
+          days = {};
+        }
+        if (value && value.frequentTypes) {
+          frequentIds = normalizeFrequent(value.frequentTypes);
+        } else if (value && !value.frequentTypes) {
+          frequentIds = [];
+        }
+        persistLocal();
+        render();
+        skipCloud = false;
+        seedLocal = false;
+      }
+
+      function connectCloud() {
+        if (!firebaseConfigured()) return;
+        try {
+          firebase.initializeApp(firebaseConfig);
+        } catch (error) {
+          console.error(error);
+          toast("Не удалось подключить Firebase");
+          return;
+        }
+        cloudReady = true;
+        journalRef().on("value", (snap) => {
+          const value = snap.val();
+          if (!value) {
+            if (seedLocal && (stepGoal !== DEFAULT_GOAL || Object.keys(days).length || frequentIds.length)) {
+              const payload = {
+                settings: { stepGoal },
+                days
+              };
+              if (frequentIds.length) payload.frequentTypes = frequentIds;
+              journalRef().set(payload).catch(cloudError);
+            }
+            return;
+          }
+          applyCloud(value);
+        }, cloudError);
+      }
+
+      weeksEl.addEventListener("click", (event) => {
+        if (suppressClick) {
+          suppressClick = false;
+          event.preventDefault();
+          return;
+        }
+        const btn = event.target.closest(".day");
+        if (!btn || !btn.dataset.key) return;
+        selectedKey = btn.dataset.key;
+        render();
+      });
+
+      calendarEl.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (event.target.closest(".handle")) return;
+        swipe = {
+          x: event.clientX,
+          y: event.clientY,
+          id: event.pointerId,
+          axis: null,
+          captured: false
+        };
+      });
+
+      calendarEl.addEventListener("pointermove", (event) => {
+        if (!swipe) return;
+        const dx = event.clientX - swipe.x;
+        const dy = event.clientY - swipe.y;
+        if (!swipe.axis) {
+          if (Math.hypot(dx, dy) < 12) return;
+          swipe.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+          if (swipe.axis === "x") {
+            swipe.captured = true;
+            calendarEl.classList.add("swiping");
+            try { calendarEl.setPointerCapture(swipe.id); } catch (_) {}
+          }
+        }
+        if (swipe.axis !== "x") return;
+        const width = calendarEl.offsetWidth || 1;
+        const shift = Math.max(-0.4, Math.min(0.4, dx / width));
+        weeksEl.style.transform = `translateX(${shift * 100}%)`;
+        monthLabel.style.transform = `translateX(${shift * 36}%)`;
+      });
+
+      function endSwipe(event) {
+        if (!swipe) return;
+        const dx = event.clientX - swipe.x;
+        const axis = swipe.axis;
+        const captured = swipe.captured;
+        const id = swipe.id;
+        swipe = null;
+        clearSwipeTransform();
+        if (captured) {
+          try { calendarEl.releasePointerCapture(id); } catch (_) {}
+        }
+        if (axis !== "x" || Math.abs(dx) < 48) return;
+        suppressClick = true;
+        shiftMonth(dx < 0 ? 1 : -1);
+      }
+
+      calendarEl.addEventListener("pointerup", endSwipe);
+      calendarEl.addEventListener("pointercancel", () => {
+        swipe = null;
+        clearSwipeTransform();
+      });
+
+      handleBtn.addEventListener("click", () => {
+        if (suppressClick) {
+          suppressClick = false;
+          return;
+        }
+        setExpanded(!monthExpanded);
+      });
+
+      handleBtn.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        pull = { y: event.clientY };
+        suppressClick = false;
+      });
+
+      handleBtn.addEventListener("pointermove", (event) => {
+        if (!pull) return;
+        const dy = event.clientY - pull.y;
+        if (Math.abs(dy) > 10) pull.moved = true;
+      });
+
+      function endPull(event) {
+        if (!pull) return;
+        const dy = event.clientY - pull.y;
+        const moved = pull.moved;
+        pull = null;
+        if (!moved || Math.abs(dy) < 36) return;
+        suppressClick = true;
+        setExpanded(dy > 0);
+      }
+
+      handleBtn.addEventListener("pointerup", endPull);
+      handleBtn.addEventListener("pointercancel", () => { pull = null; });
+
+      stepsCard.addEventListener("click", () => {
+        openStepsEditor(selectedKey);
+      });
+
+      document.getElementById("steps-save").addEventListener("click", () => {
+        const raw = String(stepsInput.value || "").trim();
+        const n = raw === "" ? 0 : Number(raw);
+        if (!Number.isFinite(n) || n < 0 || n > 200000) {
+          toast("Введите шаги от 0 до 200 000");
+          return;
+        }
+        const steps = Math.round(n);
+        const workouts = workoutsFor(selectedKey);
+        if (!steps && !workouts.length) delete days[selectedKey];
+        else {
+          days[selectedKey] = {};
+          if (steps) days[selectedKey].steps = steps;
+          if (workouts.length) days[selectedKey].workouts = workouts;
+        }
+        writeDay(selectedKey);
+        closeSheet(stepsBackdrop);
+        render();
+      });
+
+      document.getElementById("settings-btn").addEventListener("click", () => {
+        goalInput.value = String(stepGoal);
+        openSheet(settingsBackdrop);
+        requestAnimationFrame(() => goalInput.focus());
+      });
+
+      document.getElementById("goal-save").addEventListener("click", () => {
+        const n = Number(goalInput.value);
+        if (!Number.isFinite(n) || n < 1000 || n > 100000) {
+          toast("Цель — от 1 000 до 100 000");
+          return;
+        }
+        stepGoal = Math.round(n);
+        writeGoal();
+        closeSheet(settingsBackdrop);
+        render();
+      });
+
+      settingsBackdrop.addEventListener("click", (event) => {
+        if (event.target === settingsBackdrop) closeSheet(settingsBackdrop);
+      });
+      stepsBackdrop.addEventListener("click", (event) => {
+        if (event.target === stepsBackdrop) closeSheet(stepsBackdrop);
+      });
+
+      document.getElementById("heart-btn").addEventListener("click", () => {
+        renderKinds();
+        openSheet(catalogEl);
+      });
+      document.getElementById("catalog-close").addEventListener("click", () => {
+        closeSheet(pickerEl);
+        closeSheet(catalogEl);
+      });
+      document.getElementById("create-workout-btn").addEventListener("click", () => {
+        if (!unusedKinds().length) {
+          toast("Все виды уже в списке");
+          return;
+        }
+        renderPicker();
+        openSheet(pickerEl);
+      });
+      document.getElementById("picker-close").addEventListener("click", () => {
+        closeSheet(pickerEl);
+      });
+      kindList.addEventListener("click", (event) => {
+        const remove = event.target.closest(".remove");
+        if (remove && remove.dataset.remove) {
+          event.stopPropagation();
+          removeFrequent(remove.dataset.remove);
+          return;
+        }
+        const btn = event.target.closest(".kind-row");
+        if (!btn) return;
+        const kind = typeById(btn.dataset.id);
+        if (!kind) return;
+        addWorkout(kind);
+      });
+      pickerList.addEventListener("click", (event) => {
+        const btn = event.target.closest(".kind-row");
+        if (!btn) return;
+        const kind = typeById(btn.dataset.id);
+        if (!kind) return;
+        if (frequentIds.includes(kind.id)) {
+          toast("Уже в списке");
+          return;
+        }
+        frequentIds.unshift(kind.id);
+        writeFrequent();
+        closeSheet(pickerEl);
+        renderKinds();
+      });
+      dayWorkoutsEl.addEventListener("click", (event) => {
+        const btn = event.target.closest(".remove");
+        if (!btn || !btn.dataset.id) return;
+        const row = days[selectedKey] || {};
+        const workouts = workoutsFor(selectedKey).filter((item) => item.id !== btn.dataset.id);
+        if (!row.steps && !workouts.length) delete days[selectedKey];
+        else {
+          days[selectedKey] = {};
+          if (row.steps) days[selectedKey].steps = row.steps;
+          if (workouts.length) days[selectedKey].workouts = workouts;
+        }
+        writeDay(selectedKey);
+        render();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        if (!pickerEl.classList.contains("hidden")) {
+          closeSheet(pickerEl);
+          return;
+        }
+        if (!catalogEl.classList.contains("hidden")) {
+          closeSheet(pickerEl);
+          closeSheet(catalogEl);
+        }
+      });
+
+      goalInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") document.getElementById("goal-save").click();
+      });
+      stepsInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") document.getElementById("steps-save").click();
+      });
+      const stored = loadStored();
+      journalId = idFromUrl();
+      if (typeof stored.stepGoal === "number" && stored.stepGoal > 0) stepGoal = stored.stepGoal;
+      if (stored.days && typeof stored.days === "object") days = stored.days;
+      if (stored.catalogVersion === CATALOG_VERSION) {
+        frequentIds = normalizeFrequent(stored.frequentIds);
+      } else {
+        frequentIds = [];
+        cleanDayWorkouts();
+      }
+      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length);
+      persistLocal();
+      render();
+      connectCloud();
+    })();
+  </script>
+</body>
+</html>

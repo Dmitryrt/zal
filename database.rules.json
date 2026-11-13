@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "journals": {
+      "$id": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$id.length >= 8 && $id.length <= 32"
+      }
+    }
+  }
+}
