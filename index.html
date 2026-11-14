@@ -1926,8 +1926,16 @@
         openSheet(workoutBackdrop);
       }
 
+      let garminPullAt = 0;
+
       function pullGarminSteps() {
-        fetch(`./garmin-steps.json?t=${Date.now()}`)
+        const now = Date.now();
+        if (now - garminPullAt < 4000) return;
+        garminPullAt = now;
+        fetch(`./garmin-steps.json?t=${now}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
+        })
           .then((res) => (res.ok ? res.json() : null))
           .then((payload) => {
             const stepsChanged = applyGarminSteps(payload);
@@ -1935,6 +1943,16 @@
             if (stepsChanged || workoutsChanged) render();
           })
           .catch(() => {});
+      }
+
+      function watchGarminRefresh() {
+        const refresh = () => {
+          if (document.visibilityState === "hidden") return;
+          pullGarminSteps();
+        };
+        document.addEventListener("visibilitychange", refresh);
+        window.addEventListener("pageshow", refresh);
+        window.addEventListener("focus", refresh);
       }
 
       function connectCloud() {
@@ -2288,6 +2306,7 @@
       persistLocal();
       render();
       window.addEventListener("resize", fitMascot);
+      watchGarminRefresh();
       connectCloud();
       if (!firebaseConfigured()) pullGarminSteps();
     })();
