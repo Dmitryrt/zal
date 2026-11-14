@@ -77,13 +77,19 @@
 
     .header-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       flex-shrink: 0;
     }
 
     @media (max-width: 360px) {
-      h1 { font-size: 1.7rem; }
-      .header-actions { gap: 8px; }
+      h1 { font-size: 1.65rem; }
+      .header-actions { gap: 6px; }
+      .icon-btn { width: 34px; height: 34px; }
+    }
+
+    @media (max-width: 340px) {
+      h1 { font-size: 1.4rem; }
+      .icon-btn { width: 32px; height: 32px; }
     }
 
     .icon-btn, .sheet-save, button {
@@ -93,8 +99,8 @@
     }
 
     .icon-btn {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border: 0;
       border-radius: 50%;
       background: var(--fill);
@@ -104,6 +110,8 @@
     }
 
     .icon-btn:active { transform: scale(0.96); }
+    .icon-btn.busy svg { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     .calendar {
       background: var(--card);
@@ -721,6 +729,12 @@
     <header>
       <h1>Сегодня <span class="live-dot" aria-hidden="true"></span></h1>
       <div class="header-actions">
+        <button class="icon-btn" id="refresh-btn" type="button" aria-label="Обновить">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 12a8 8 0 1 1-2.2-5.5"/>
+            <path d="M20 4v5h-5"/>
+          </svg>
+        </button>
         <button class="icon-btn" id="heart-btn" type="button" aria-label="Избранное">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M19.5 12.6 12 20l-7.5-7.4a4.5 4.5 0 0 1 6.4-6.3L12 7.7l1.1-1.4a4.5 4.5 0 0 1 6.4 6.3z"/>
@@ -1927,14 +1941,16 @@
       }
 
       function pullGarminSteps() {
-        fetch(`./garmin-steps.json?t=${Date.now()}`, { cache: "reload" })
+        return fetch(`./garmin-steps.json?t=${Date.now()}`, { cache: "reload" })
           .then((res) => (res.ok ? res.json() : null))
           .then((payload) => {
+            if (!payload) return false;
             const stepsChanged = applyGarminSteps(payload);
             const workoutsChanged = applyGarminWorkouts(payload);
             if (stepsChanged || workoutsChanged) render();
+            return true;
           })
-          .catch(() => {});
+          .catch(() => false);
       }
 
       function watchGarminRefresh() {
@@ -2170,6 +2186,15 @@
         if (event.target === workoutBackdrop) closeSheet(workoutBackdrop);
       });
 
+      document.getElementById("refresh-btn").addEventListener("click", () => {
+        const button = document.getElementById("refresh-btn");
+        if (button.classList.contains("busy")) return;
+        button.classList.add("busy");
+        pullGarminSteps().then((ok) => {
+          button.classList.remove("busy");
+          toast(ok ? "Данные обновлены" : "Не удалось обновить");
+        });
+      });
       document.getElementById("heart-btn").addEventListener("click", () => {
         renderKinds();
         openSheet(catalogEl);
