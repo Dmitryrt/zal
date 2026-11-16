@@ -1957,6 +1957,7 @@
         const calories = bestInPeriod(caloriesFor);
         const snowboard = bestWorkout("snowboard", "maxSpeed");
         const bike = bestWorkout("bike", "distanceM");
+        const cardio = typeCount("cardio");
         const rows = [
           {
             name: "Шаги",
@@ -1987,6 +1988,12 @@
             note: "максимальная дистанция",
             kind: "bike",
             value: recordValue(bike.inMonth, bike.inYear, formatKmNumber, "км")
+          },
+          {
+            name: "Кардио",
+            note: "сколько раз",
+            kind: "cardio",
+            value: recordValue(cardio.inMonth, cardio.inYear, formatCount, "")
           }
         ];
         recordsList.replaceChildren(...rows.map((spec) => {
