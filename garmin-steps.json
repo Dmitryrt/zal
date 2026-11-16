@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-16T18:39:55Z",
+  "updatedAt": "2026-11-16T20:19:38Z",
   "days": {
     "2026-10-20": {
       "steps": 6771,
@@ -137,10 +137,29 @@
       "distanceM": 6948
     },
     "2026-11-16": {
-      "steps": 6700,
-      "activeCalories": 276,
-      "distanceM": 5439
+      "steps": 10613,
+      "activeCalories": 442,
+      "distanceM": 8573
     }
   },
-  "activities": []
+  "activities": [
+    {
+      "garminId": "25101465203",
+      "date": "2026-11-16",
+      "typeId": "walk",
+      "stats": {
+        "start": "22:42",
+        "durationSec": 1173,
+        "distanceM": 1745,
+        "calories": 117,
+        "avgHr": 94,
+        "maxHr": 110,
+        "avgSpeed": 1.49,
+        "maxSpeed": 2.0,
+        "elevationGainM": 24,
+        "elevationLossM": 5,
+        "maxElevationM": 35
+      }
+    }
+  ]
 }
