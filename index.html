@@ -571,19 +571,45 @@
 
     .plan-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 68px 1fr 1fr;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .plan-caption {
+      display: block;
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
     }
 
     .plan-sets {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-top: 8px;
       height: 48px;
       border-radius: 14px;
       background: #1c1c1e;
     }
+
+    .sheet .plan-weight {
+      width: 100%;
+      height: 48px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 14px;
+      background: #1c1c1e;
+      color: var(--ink);
+      font-size: 1.15rem;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .sheet .plan-weight::placeholder { color: #636366; }
+    .sheet .plan-weight:focus { outline: none; }
 
     .plan-sets select {
       -webkit-appearance: none;
@@ -1578,7 +1604,8 @@
             exerciseId: String(row.exerciseId || ""),
             name,
             plan: String(row.plan || "").slice(0, 40),
-            fact: String(row.fact || "").slice(0, 40)
+            fact: String(row.fact || "").slice(0, 40),
+            weight: cleanWeight(row.weight)
           };
         }).filter(Boolean);
       }
@@ -2231,10 +2258,7 @@
           remove.setAttribute("aria-label", `Убрать ${row.name}`);
           remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
           head.append(title, remove);
-          const grid = document.createElement("div");
-          grid.className = "plan-grid";
-          grid.append(planField(row, "plan", "План"), planField(row, "fact", "Факт"));
-          block.append(head, grid);
+          block.append(head, planColumns(row));
           workoutStats.append(block);
         });
       }
@@ -2276,9 +2300,49 @@
         return select;
       }
 
-      function planField(row, field, labelText) {
+      function cleanWeight(value) {
+        const digits = String(value || "").replace(/\D/g, "").slice(0, 3);
+        if (!digits) return "";
+        return String(Number(digits));
+      }
+
+      function planCaption(text, control) {
         const label = document.createElement("label");
-        label.textContent = labelText;
+        const caption = document.createElement("span");
+        caption.className = "plan-caption";
+        caption.textContent = text;
+        label.append(caption, control);
+        return label;
+      }
+
+      function weightInput(row) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.inputMode = "numeric";
+        input.autocomplete = "off";
+        input.enterKeyHint = "done";
+        input.maxLength = 3;
+        input.placeholder = "–";
+        input.className = "plan-weight";
+        input.setAttribute("aria-label", "Вес");
+        input.dataset.row = row.id;
+        input.dataset.weight = "1";
+        input.value = cleanWeight(row.weight);
+        return input;
+      }
+
+      function planColumns(row) {
+        const grid = document.createElement("div");
+        grid.className = "plan-grid";
+        grid.append(
+          planCaption("Вес", weightInput(row)),
+          planCaption("План", planBox(row, "plan")),
+          planCaption("Факт", planBox(row, "fact"))
+        );
+        return grid;
+      }
+
+      function planBox(row, field) {
         const [sets, reps] = planParts(row[field]);
         const box = document.createElement("span");
         box.className = "plan-sets";
@@ -2290,8 +2354,7 @@
           times,
           planSelect(row, field, "reps", 10, reps)
         );
-        label.append(box);
-        return label;
+        return box;
       }
 
       function flushPlanSave() {
@@ -2307,7 +2370,7 @@
         if (!target) return;
         const plan = planOf(target);
         const row = plan.find((entry) => entry.id === rowId);
-        if (!row || (field !== "plan" && field !== "fact")) return;
+        if (!row || (field !== "plan" && field !== "fact" && field !== "weight")) return;
         row[field] = String(value || "").slice(0, 40);
         target.plan = plan;
         stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
@@ -2668,6 +2731,13 @@
         }
         const remove = event.target.closest("[data-remove-plan]");
         if (remove) removePlanRow(remove.dataset.removePlan);
+      });
+      workoutStats.addEventListener("input", (event) => {
+        const input = event.target.closest("input[data-weight]");
+        if (!input) return;
+        const next = cleanWeight(input.value);
+        if (input.value !== next) input.value = next;
+        schedulePlanSave(input.dataset.row, "weight", next);
       });
       workoutStats.addEventListener("change", (event) => {
         const select = event.target.closest("select[data-row]");
