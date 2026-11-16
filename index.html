@@ -513,9 +513,9 @@
       align-items: center;
       gap: 6px;
       padding: 0;
-      font-size: 1.05rem;
-      font-weight: 650;
-      letter-spacing: -0.02em;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
       text-align: left;
     }
     .plan-toggle span {
@@ -2132,7 +2132,10 @@
         }
         const kind = typeById(item.typeId);
         const gym = item.typeId === "gym";
-        workoutTitle.textContent = item.name || (kind && kind.name) || "Тренировка";
+        workoutTitle.hidden = gym;
+        workoutTitle.textContent = gym ? "План тренировки" : (item.name || (kind && kind.name) || "Тренировка");
+        if (gym) workoutSheet.setAttribute("aria-label", "План тренировки");
+        else workoutSheet.removeAttribute("aria-label");
         workoutSheet.classList.toggle("tall", gym);
         workoutStats.classList.toggle("plan-collapsed", gym && !planExpanded);
         workoutStats.replaceChildren();
