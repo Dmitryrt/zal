@@ -578,28 +578,39 @@
     .plan-sets {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 6px;
+      justify-content: center;
+      margin-top: 8px;
+      height: 48px;
+      border-radius: 14px;
+      background: #1c1c1e;
     }
 
     .plan-sets select {
-      flex: 1;
-      min-width: 0;
-      height: 46px;
+      -webkit-appearance: none;
+      appearance: none;
+      width: 46px;
+      height: 48px;
+      margin: 0;
       border: 0;
-      border-radius: 14px;
-      background: #1c1c1e;
+      border-radius: 0;
+      background: transparent;
       color: var(--ink);
       font: inherit;
-      font-size: 1.05rem;
+      font-size: 1.2rem;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
       text-align: center;
-      padding: 0 2px;
+      text-align-last: center;
+      padding: 0;
     }
 
+    .plan-sets select.is-empty { color: #636366; }
+
     .plan-times {
-      color: var(--muted);
-      font-weight: 650;
-      flex-shrink: 0;
+      width: 16px;
+      color: #8e8e93;
+      font-weight: 500;
+      text-align: center;
     }
 
     .exercise-create {
@@ -2259,6 +2270,7 @@
           select.append(option);
         }
         select.value = selected;
+        if (!selected) select.classList.add("is-empty");
         return select;
       }
 
@@ -2270,7 +2282,7 @@
         box.className = "plan-sets";
         const times = document.createElement("span");
         times.className = "plan-times";
-        times.textContent = "x";
+        times.textContent = "×";
         box.append(
           planSelect(row, field, "sets", 5, sets),
           times,
@@ -2661,6 +2673,7 @@
         const box = select.closest(".plan-sets");
         const sets = box.querySelector('[data-part="sets"]').value;
         const reps = box.querySelector('[data-part="reps"]').value;
+        select.classList.toggle("is-empty", !select.value);
         schedulePlanSave(select.dataset.row, select.dataset.field, formatPlan(sets, reps));
       });
       workoutStats.addEventListener("focusout", () => {
