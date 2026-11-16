@@ -504,21 +504,26 @@
     }
 
     .plan-toggle {
-      flex: 1;
+      flex: 0 1 auto;
       min-width: 0;
       border: 0;
       background: transparent;
       color: var(--ink);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
       padding: 0;
       font-size: 1.05rem;
       font-weight: 650;
       letter-spacing: -0.02em;
       text-align: left;
     }
-    .plan-toggle span { flex: 1; min-width: 0; }
+    .plan-toggle span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .plan-toggle svg {
       color: #8e8e93;
       flex-shrink: 0;
@@ -528,13 +533,16 @@
 
     .plan-edit {
       flex-shrink: 0;
+      width: 36px;
+      height: 32px;
+      margin-left: auto;
       border: 0;
+      border-radius: 10px;
       background: transparent;
       color: var(--ink);
       padding: 0;
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
+      display: grid;
+      place-items: center;
     }
     .plan-edit:active, .plan-toggle:active { opacity: 0.6; }
     .plan-collapsed .plan-block { display: none; }
@@ -2168,7 +2176,8 @@
         edit.type = "button";
         edit.className = "plan-edit";
         edit.id = "plan-edit";
-        edit.textContent = plan.length ? "Изменить" : "Создать";
+        edit.setAttribute("aria-label", "Выбрать упражнение");
+        edit.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>';
         bar.append(toggle, edit);
         workoutStats.append(bar);
         plan.forEach((row) => {
