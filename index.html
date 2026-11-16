@@ -585,8 +585,10 @@
       background: #1c1c1e;
     }
 
-    .sheet .plan-sets input {
-      width: 28px;
+    .plan-sets select {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 36px;
       height: 48px;
       margin: 0;
       padding: 0;
@@ -594,15 +596,16 @@
       border-radius: 0;
       background: transparent;
       color: var(--ink);
+      font: inherit;
       font-size: 1.2rem;
       font-weight: 650;
       font-variant-numeric: tabular-nums;
       text-align: center;
+      text-align-last: center;
     }
 
-    .sheet .plan-sets input[data-part="reps"] { width: 36px; }
-    .sheet .plan-sets input::placeholder { color: #636366; }
-    .sheet .plan-sets input:focus { outline: none; }
+    .plan-sets select[data-part="reps"] { width: 44px; }
+    .plan-sets select.is-empty { color: #636366; }
 
     .plan-times {
       width: 16px;
@@ -2252,30 +2255,25 @@
         return `${sets || ""} x ${reps || ""}`.trim();
       }
 
-      function keepRange(raw, max, previous) {
-        const digits = String(raw || "").replace(/\D/g, "");
-        if (!digits) return "";
-        const n = Number(max === 5 ? digits.slice(-1) : digits.slice(0, 2));
-        if (n >= 1 && n <= max) return String(n);
-        return previous || "";
-      }
-
-      function planNumber(row, field, part, selected) {
-        const input = document.createElement("input");
-        input.type = "text";
-        input.inputMode = "numeric";
-        input.autocomplete = "off";
-        input.enterKeyHint = "done";
-        input.placeholder = "–";
-        input.maxLength = part === "sets" ? 1 : 2;
-        input.setAttribute("aria-label", part === "sets" ? "от 1 до 5" : "от 1 до 10");
-        input.dataset.row = row.id;
-        input.dataset.field = field;
-        input.dataset.part = part;
-        input.dataset.last = selected;
-        input.value = selected;
-        if (!selected) input.classList.add("is-empty");
-        return input;
+      function planSelect(row, field, part, max, selected) {
+        const select = document.createElement("select");
+        select.dataset.row = row.id;
+        select.dataset.field = field;
+        select.dataset.part = part;
+        select.setAttribute("aria-label", part === "sets" ? "от 1 до 5" : "от 1 до 10");
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "–";
+        select.append(empty);
+        for (let n = 1; n <= max; n += 1) {
+          const option = document.createElement("option");
+          option.value = String(n);
+          option.textContent = String(n);
+          select.append(option);
+        }
+        select.value = selected;
+        if (!selected) select.classList.add("is-empty");
+        return select;
       }
 
       function planField(row, field, labelText) {
@@ -2288,9 +2286,9 @@
         times.className = "plan-times";
         times.textContent = "×";
         box.append(
-          planNumber(row, field, "sets", sets),
+          planSelect(row, field, "sets", 5, sets),
           times,
-          planNumber(row, field, "reps", reps)
+          planSelect(row, field, "reps", 10, reps)
         );
         label.append(box);
         return label;
@@ -2671,18 +2669,14 @@
         const remove = event.target.closest("[data-remove-plan]");
         if (remove) removePlanRow(remove.dataset.removePlan);
       });
-      workoutStats.addEventListener("input", (event) => {
-        const input = event.target.closest("input[data-row]");
-        if (!input) return;
-        const max = input.dataset.part === "sets" ? 5 : 10;
-        const next = keepRange(input.value, max, input.dataset.last || "");
-        input.value = next;
-        input.dataset.last = next;
-        input.classList.toggle("is-empty", !next);
-        const box = input.closest(".plan-sets");
+      workoutStats.addEventListener("change", (event) => {
+        const select = event.target.closest("select[data-row]");
+        if (!select) return;
+        select.classList.toggle("is-empty", !select.value);
+        const box = select.closest(".plan-sets");
         const sets = box.querySelector('[data-part="sets"]').value;
         const reps = box.querySelector('[data-part="reps"]').value;
-        schedulePlanSave(input.dataset.row, input.dataset.field, formatPlan(sets, reps));
+        schedulePlanSave(select.dataset.row, select.dataset.field, formatPlan(sets, reps));
       });
       workoutStats.addEventListener("focusout", () => {
         flushPlanSave();
