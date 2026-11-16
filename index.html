@@ -485,6 +485,101 @@
       line-height: 1.4;
     }
 
+    .sheet.tall {
+      max-height: min(86dvh, 760px);
+      overflow: auto;
+      scrollbar-width: none;
+    }
+    .sheet.tall::-webkit-scrollbar { display: none; }
+
+    .plan-open {
+      width: 100%;
+      min-height: 48px;
+      margin: 0;
+      padding: 2px 0 12px;
+      border: 0;
+      border-bottom: 1px solid #3a3a3c;
+      background: transparent;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 1.05rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      text-align: left;
+    }
+    .plan-open svg { color: #636366; flex-shrink: 0; }
+
+    .plan-block {
+      padding: 14px 0 4px;
+      border-bottom: 1px solid #3a3a3c;
+    }
+
+    .plan-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .plan-title {
+      flex: 1;
+      min-width: 0;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .plan-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .sheet .plan-grid input {
+      margin-top: 6px;
+      height: 46px;
+      font-size: 1.05rem;
+    }
+
+    .exercise-create {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+
+    .exercise-create input {
+      flex: 1;
+      min-width: 0;
+      height: 52px;
+      border: 0;
+      border-radius: 14px;
+      background: #1c1c1e;
+      color: var(--ink);
+      font: inherit;
+      font-size: 1.05rem;
+      padding: 0 14px;
+      outline: none;
+    }
+
+    .exercise-create button {
+      flex-shrink: 0;
+      height: 52px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 14px;
+      background: #fff;
+      color: #111;
+      font-weight: 650;
+    }
+    .exercise-create button:active { transform: scale(0.98); }
+
+    #exercise-picker { z-index: 40; }
+
     .catalog {
       position: fixed;
       inset: 0;
@@ -915,6 +1010,21 @@
     </div>
   </div>
 
+  <div class="catalog picker hidden" id="exercise-picker" role="dialog" aria-labelledby="exercise-title">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="exercise-close" type="button" aria-label="Назад">
+        <span></span>
+      </button>
+      <h2 class="picker-title" id="exercise-title">Упражнение</h2>
+      <div class="exercise-create">
+        <input id="exercise-name" type="text" maxlength="40" placeholder="Жим лежа" autocomplete="off" enterkeyhint="done">
+        <button id="exercise-add" type="button">Создать</button>
+      </div>
+      <div class="kind-list" id="exercise-list"></div>
+      <p class="catalog-hint" id="exercise-hint">Выберите упражнение или создайте своё</p>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-database-compat.js"></script>
   <script>
@@ -993,11 +1103,19 @@
       const pickerEl = document.getElementById("kind-picker");
       const pickerList = document.getElementById("picker-list");
       const catalogHint = document.getElementById("catalog-hint");
+      const exercisePicker = document.getElementById("exercise-picker");
+      const exerciseList = document.getElementById("exercise-list");
+      const exerciseHint = document.getElementById("exercise-hint");
+      const exerciseNameInput = document.getElementById("exercise-name");
+      const workoutSheet = workoutBackdrop.querySelector(".sheet");
 
       let journalId = JOURNAL_ID;
       let stepGoal = DEFAULT_GOAL;
       let days = {};
       let frequentIds = [];
+      let exercises = [];
+      let openWorkoutId = "";
+      let planSaveTimer = 0;
       let selectedKey = todayKey();
       let monthExpanded = false;
       let cloudReady = false;
@@ -1159,6 +1277,7 @@
           stepGoal,
           days,
           frequentIds,
+          exercises,
           catalogVersion: CATALOG_VERSION
         }));
         setUrl();
@@ -1349,6 +1468,50 @@
         persistLocal();
         if (!cloudReady || skipCloud) return;
         journalRef().child("frequentTypes").set(frequentIds).catch(cloudError);
+      }
+
+      function writeExercises() {
+        persistLocal();
+        if (!cloudReady || skipCloud) return;
+        const ref = journalRef().child("exercises");
+        if (!exercises.length) ref.remove().catch(cloudError);
+        else ref.set(exercises).catch(cloudError);
+      }
+
+      function normalizeExercises(value) {
+        const raw = Array.isArray(value)
+          ? value
+          : (value && typeof value === "object" ? Object.values(value) : []);
+        const seen = new Set();
+        const list = [];
+        raw.forEach((item) => {
+          if (!item || typeof item !== "object") return;
+          const id = String(item.id || "").trim();
+          const name = String(item.name || "").trim().replace(/\s+/g, " ").slice(0, 40);
+          if (!id || !name || seen.has(id)) return;
+          seen.add(id);
+          list.push({ id, name });
+        });
+        return list;
+      }
+
+      function planOf(item) {
+        const raw = item && item.plan;
+        const list = Array.isArray(raw)
+          ? raw
+          : (raw && typeof raw === "object" ? Object.values(raw) : []);
+        return list.map((row) => {
+          if (!row || typeof row !== "object") return null;
+          const name = String(row.name || "").trim().slice(0, 40);
+          if (!name) return null;
+          return {
+            id: String(row.id || uid()),
+            exerciseId: String(row.exerciseId || ""),
+            name,
+            plan: String(row.plan || "").slice(0, 40),
+            fact: String(row.fact || "").slice(0, 40)
+          };
+        }).filter(Boolean);
       }
 
       function normalizeFrequent(value) {
@@ -1721,6 +1884,11 @@
         } else if (value && !value.frequentTypes) {
           frequentIds = [];
         }
+        if (value && value.exercises) {
+          exercises = normalizeExercises(value.exercises);
+        } else if (value && !value.exercises) {
+          exercises = [];
+        }
         persistLocal();
         render();
         skipCloud = false;
@@ -1914,30 +2082,202 @@
       }
 
       function openWorkout(item) {
+        openWorkoutId = item.id;
+        paintWorkout();
+        openSheet(workoutBackdrop);
+      }
+
+      function paintWorkout() {
+        const item = workoutsFor(selectedKey).find((entry) => entry.id === openWorkoutId);
+        if (!item) {
+          closeSheet(workoutBackdrop);
+          return;
+        }
         const kind = typeById(item.typeId);
+        const gym = item.typeId === "gym";
         workoutTitle.textContent = item.name || (kind && kind.name) || "Тренировка";
-        const lines = workoutLines(item);
+        workoutSheet.classList.toggle("tall", gym);
         workoutStats.replaceChildren();
-        if (!lines.length) {
+        if (gym) paintGymPlan(item);
+        const lines = workoutLines(item);
+        if (!lines.length && !gym) {
           const empty = document.createElement("p");
           empty.className = "workout-empty";
           empty.textContent = "Garmin пока не прислал цифры по этой тренировке";
           workoutStats.append(empty);
-        } else {
-          lines.forEach(([label, value]) => {
-            const row = document.createElement("div");
-            row.className = "workout-stat";
-            const name = document.createElement("span");
-            name.className = "label";
-            name.textContent = label;
-            const number = document.createElement("span");
-            number.className = "value";
-            number.textContent = value;
-            row.append(name, number);
-            workoutStats.append(row);
-          });
+          return;
         }
-        openSheet(workoutBackdrop);
+        lines.forEach(([label, value]) => {
+          const row = document.createElement("div");
+          row.className = "workout-stat";
+          const name = document.createElement("span");
+          name.className = "label";
+          name.textContent = label;
+          const number = document.createElement("span");
+          number.className = "value";
+          number.textContent = value;
+          row.append(name, number);
+          workoutStats.append(row);
+        });
+      }
+
+      function paintGymPlan(item) {
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "plan-open";
+        open.id = "plan-open";
+        open.innerHTML = 'План тренировки<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>';
+        workoutStats.append(open);
+        planOf(item).forEach((row) => {
+          const block = document.createElement("div");
+          block.className = "plan-block";
+          const head = document.createElement("div");
+          head.className = "plan-head";
+          const title = document.createElement("span");
+          title.className = "plan-title";
+          title.textContent = row.name;
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "remove";
+          remove.dataset.removePlan = row.id;
+          remove.setAttribute("aria-label", `Убрать ${row.name}`);
+          remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+          head.append(title, remove);
+          const grid = document.createElement("div");
+          grid.className = "plan-grid";
+          grid.append(planField(row, "plan", "План"), planField(row, "fact", "Факт"));
+          block.append(head, grid);
+          workoutStats.append(block);
+        });
+      }
+
+      function planField(row, field, labelText) {
+        const label = document.createElement("label");
+        label.textContent = labelText;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.maxLength = 40;
+        input.placeholder = "3 x 10";
+        input.autocomplete = "off";
+        input.enterKeyHint = "done";
+        input.dataset.row = row.id;
+        input.dataset.field = field;
+        input.value = row[field] || "";
+        label.append(input);
+        return label;
+      }
+
+      function flushPlanSave() {
+        if (!planSaveTimer) return;
+        clearTimeout(planSaveTimer);
+        planSaveTimer = 0;
+        writeDay(selectedKey);
+      }
+
+      function schedulePlanSave(rowId, field, value) {
+        const workouts = workoutsFor(selectedKey).slice();
+        const target = workouts.find((item) => item.id === openWorkoutId);
+        if (!target) return;
+        const plan = planOf(target);
+        const row = plan.find((entry) => entry.id === rowId);
+        if (!row || (field !== "plan" && field !== "fact")) return;
+        row[field] = String(value || "").slice(0, 40);
+        target.plan = plan;
+        stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
+        clearTimeout(planSaveTimer);
+        planSaveTimer = setTimeout(() => {
+          planSaveTimer = 0;
+          writeDay(selectedKey);
+        }, 350);
+      }
+
+      function withOpenWorkout(change) {
+        flushPlanSave();
+        const workouts = workoutsFor(selectedKey).map((item) => {
+          const copy = Object.assign({}, item);
+          if (copy.plan) copy.plan = planOf(copy);
+          return copy;
+        });
+        const target = workouts.find((item) => item.id === openWorkoutId);
+        if (!target || target.typeId !== "gym") return null;
+        if (!Array.isArray(target.plan)) target.plan = [];
+        change(target);
+        workouts.forEach((item) => {
+          if (Array.isArray(item.plan) && !item.plan.length) delete item.plan;
+        });
+        stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
+        writeDay(selectedKey);
+        return target;
+      }
+
+      function addPlanExercise(exercise) {
+        const current = workoutsFor(selectedKey).find((item) => item.id === openWorkoutId);
+        if (!current || current.typeId !== "gym") return;
+        if (planOf(current).some((row) => row.exerciseId === exercise.id)) {
+          toast("Уже в плане");
+          return;
+        }
+        withOpenWorkout((item) => {
+          item.plan.push({
+            id: uid(),
+            exerciseId: exercise.id,
+            name: exercise.name,
+            plan: "",
+            fact: ""
+          });
+        });
+        closeSheet(exercisePicker);
+        paintWorkout();
+        const inputs = workoutStats.querySelectorAll('input[data-field="plan"]');
+        const last = inputs[inputs.length - 1];
+        if (last) last.focus();
+      }
+
+      function removePlanRow(rowId) {
+        withOpenWorkout((item) => {
+          item.plan = planOf(item).filter((row) => row.id !== rowId);
+        });
+        paintWorkout();
+      }
+
+      function renderExerciseList() {
+        exerciseList.replaceChildren(...exercises.map((exercise) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "kind-row";
+          btn.dataset.id = exercise.id;
+          const name = document.createElement("span");
+          name.className = "kind-name";
+          name.textContent = exercise.name;
+          btn.append(name);
+          return btn;
+        }));
+        exerciseHint.classList.toggle("hidden", exercises.length > 0);
+      }
+
+      function openExercisePicker() {
+        flushPlanSave();
+        renderExerciseList();
+        exerciseNameInput.value = "";
+        openSheet(exercisePicker);
+        requestAnimationFrame(() => exerciseNameInput.focus());
+      }
+
+      function createExercise() {
+        const name = exerciseNameInput.value.trim().replace(/\s+/g, " ").slice(0, 40);
+        if (!name) {
+          toast("Введите название упражнения");
+          exerciseNameInput.focus();
+          return;
+        }
+        let exercise = exercises.find((item) => item.name.toLowerCase() === name.toLowerCase());
+        if (!exercise) {
+          exercise = { id: uid(), name };
+          exercises.unshift(exercise);
+          writeExercises();
+        }
+        exerciseNameInput.value = "";
+        addPlanExercise(exercise);
       }
 
       function pullGarminSteps() {
@@ -1981,6 +2321,7 @@
                 days
               };
               if (frequentIds.length) payload.frequentTypes = frequentIds;
+              if (exercises.length) payload.exercises = exercises;
               journalRef().set(payload).catch(cloudError);
             }
             pullGarminSteps();
@@ -2183,7 +2524,39 @@
         if (event.target === distanceBackdrop) closeSheet(distanceBackdrop);
       });
       workoutBackdrop.addEventListener("click", (event) => {
-        if (event.target === workoutBackdrop) closeSheet(workoutBackdrop);
+        if (event.target !== workoutBackdrop) return;
+        flushPlanSave();
+        closeSheet(exercisePicker);
+        closeSheet(workoutBackdrop);
+      });
+      workoutStats.addEventListener("click", (event) => {
+        if (event.target.closest("#plan-open")) {
+          openExercisePicker();
+          return;
+        }
+        const remove = event.target.closest("[data-remove-plan]");
+        if (remove) removePlanRow(remove.dataset.removePlan);
+      });
+      workoutStats.addEventListener("input", (event) => {
+        const input = event.target.closest("input[data-row]");
+        if (!input) return;
+        schedulePlanSave(input.dataset.row, input.dataset.field, input.value);
+      });
+      workoutStats.addEventListener("focusout", () => {
+        flushPlanSave();
+      });
+      document.getElementById("exercise-close").addEventListener("click", () => {
+        closeSheet(exercisePicker);
+      });
+      document.getElementById("exercise-add").addEventListener("click", createExercise);
+      exerciseNameInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") createExercise();
+      });
+      exerciseList.addEventListener("click", (event) => {
+        const btn = event.target.closest(".kind-row");
+        if (!btn) return;
+        const exercise = exercises.find((item) => item.id === btn.dataset.id);
+        if (exercise) addPlanExercise(exercise);
       });
 
       document.getElementById("refresh-btn").addEventListener("click", () => {
@@ -2272,6 +2645,10 @@
       });
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
+        if (!exercisePicker.classList.contains("hidden")) {
+          closeSheet(exercisePicker);
+          return;
+        }
         if (!pickerEl.classList.contains("hidden")) {
           closeSheet(pickerEl);
           return;
@@ -2293,7 +2670,10 @@
           closeSheet(distanceBackdrop);
           return;
         }
-        if (!workoutBackdrop.classList.contains("hidden")) closeSheet(workoutBackdrop);
+        if (!workoutBackdrop.classList.contains("hidden")) {
+          flushPlanSave();
+          closeSheet(workoutBackdrop);
+        }
       });
 
       goalInput.addEventListener("keydown", (event) => {
@@ -2312,13 +2692,14 @@
       journalId = idFromUrl();
       if (typeof stored.stepGoal === "number" && stored.stepGoal > 0) stepGoal = stored.stepGoal;
       if (stored.days && typeof stored.days === "object") days = stored.days;
+      if (stored.exercises) exercises = normalizeExercises(stored.exercises);
       if (stored.catalogVersion === CATALOG_VERSION) {
         frequentIds = normalizeFrequent(stored.frequentIds);
       } else {
         frequentIds = [];
         cleanDayWorkouts();
       }
-      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length);
+      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length || exercises.length);
       persistLocal();
       render();
       window.addEventListener("resize", fitMascot);
