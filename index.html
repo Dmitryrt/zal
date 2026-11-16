@@ -575,10 +575,31 @@
       gap: 10px;
     }
 
-    .sheet .plan-grid input {
+    .plan-sets {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       margin-top: 6px;
+    }
+
+    .plan-sets select {
+      flex: 1;
+      min-width: 0;
       height: 46px;
+      border: 0;
+      border-radius: 14px;
+      background: #1c1c1e;
+      color: var(--ink);
+      font: inherit;
       font-size: 1.05rem;
+      text-align: center;
+      padding: 0 2px;
+    }
+
+    .plan-times {
+      color: var(--muted);
+      font-weight: 650;
+      flex-shrink: 0;
     }
 
     .exercise-create {
@@ -2206,19 +2227,56 @@
         });
       }
 
+      function planParts(value) {
+        const match = String(value || "").trim().match(/^(\d+)?\s*[xх×]\s*(\d+)?$/i);
+        if (!match) return ["", ""];
+        const sets = Number(match[1]);
+        const reps = Number(match[2]);
+        return [
+          sets >= 1 && sets <= 5 ? String(sets) : "",
+          reps >= 1 && reps <= 10 ? String(reps) : ""
+        ];
+      }
+
+      function formatPlan(sets, reps) {
+        if (!sets && !reps) return "";
+        return `${sets || ""} x ${reps || ""}`.trim();
+      }
+
+      function planSelect(row, field, part, max, selected) {
+        const select = document.createElement("select");
+        select.dataset.row = row.id;
+        select.dataset.field = field;
+        select.dataset.part = part;
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "—";
+        select.append(empty);
+        for (let n = 1; n <= max; n += 1) {
+          const option = document.createElement("option");
+          option.value = String(n);
+          option.textContent = String(n);
+          select.append(option);
+        }
+        select.value = selected;
+        return select;
+      }
+
       function planField(row, field, labelText) {
         const label = document.createElement("label");
         label.textContent = labelText;
-        const input = document.createElement("input");
-        input.type = "text";
-        input.maxLength = 40;
-        input.placeholder = "3 x 10";
-        input.autocomplete = "off";
-        input.enterKeyHint = "done";
-        input.dataset.row = row.id;
-        input.dataset.field = field;
-        input.value = row[field] || "";
-        label.append(input);
+        const [sets, reps] = planParts(row[field]);
+        const box = document.createElement("span");
+        box.className = "plan-sets";
+        const times = document.createElement("span");
+        times.className = "plan-times";
+        times.textContent = "x";
+        box.append(
+          planSelect(row, field, "sets", 5, sets),
+          times,
+          planSelect(row, field, "reps", 10, reps)
+        );
+        label.append(box);
         return label;
       }
 
@@ -2284,9 +2342,6 @@
         planExpanded = true;
         closeSheet(exercisePicker);
         paintWorkout();
-        const inputs = workoutStats.querySelectorAll('input[data-field="plan"]');
-        const last = inputs[inputs.length - 1];
-        if (last) last.focus();
       }
 
       function removePlanRow(rowId) {
@@ -2600,10 +2655,13 @@
         const remove = event.target.closest("[data-remove-plan]");
         if (remove) removePlanRow(remove.dataset.removePlan);
       });
-      workoutStats.addEventListener("input", (event) => {
-        const input = event.target.closest("input[data-row]");
-        if (!input) return;
-        schedulePlanSave(input.dataset.row, input.dataset.field, input.value);
+      workoutStats.addEventListener("change", (event) => {
+        const select = event.target.closest("select[data-row]");
+        if (!select) return;
+        const box = select.closest(".plan-sets");
+        const sets = box.querySelector('[data-part="sets"]').value;
+        const reps = box.querySelector('[data-part="reps"]').value;
+        schedulePlanSave(select.dataset.row, select.dataset.field, formatPlan(sets, reps));
       });
       workoutStats.addEventListener("focusout", () => {
         flushPlanSave();
