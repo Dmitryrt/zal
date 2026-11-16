@@ -497,20 +497,47 @@
       min-height: 48px;
       margin: 0;
       padding: 2px 0 12px;
-      border: 0;
       border-bottom: 1px solid #3a3a3c;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .plan-toggle {
+      flex: 1;
+      min-width: 0;
+      border: 0;
       background: transparent;
       color: var(--ink);
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
+      padding: 0;
       font-size: 1.05rem;
       font-weight: 650;
       letter-spacing: -0.02em;
       text-align: left;
     }
-    .plan-open svg { color: #636366; flex-shrink: 0; }
+    .plan-toggle span { flex: 1; min-width: 0; }
+    .plan-toggle svg {
+      color: #8e8e93;
+      flex-shrink: 0;
+      transition: transform 0.18s ease;
+    }
+    .plan-collapsed .plan-toggle svg { transform: rotate(-90deg); }
+
+    .plan-edit {
+      flex-shrink: 0;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      padding: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .plan-edit:active, .plan-toggle:active { opacity: 0.6; }
+    .plan-collapsed .plan-block { display: none; }
 
     .plan-block {
       padding: 14px 0 4px;
@@ -1116,6 +1143,7 @@
       let exercises = [];
       let openWorkoutId = "";
       let planSaveTimer = 0;
+      let planExpanded = true;
       let selectedKey = todayKey();
       let monthExpanded = false;
       let cloudReady = false;
@@ -2083,6 +2111,7 @@
 
       function openWorkout(item) {
         openWorkoutId = item.id;
+        planExpanded = true;
         paintWorkout();
         openSheet(workoutBackdrop);
       }
@@ -2097,6 +2126,7 @@
         const gym = item.typeId === "gym";
         workoutTitle.textContent = item.name || (kind && kind.name) || "Тренировка";
         workoutSheet.classList.toggle("tall", gym);
+        workoutStats.classList.toggle("plan-collapsed", gym && !planExpanded);
         workoutStats.replaceChildren();
         if (gym) paintGymPlan(item);
         const lines = workoutLines(item);
@@ -2122,13 +2152,26 @@
       }
 
       function paintGymPlan(item) {
-        const open = document.createElement("button");
-        open.type = "button";
-        open.className = "plan-open";
-        open.id = "plan-open";
-        open.innerHTML = 'План тренировки<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>';
-        workoutStats.append(open);
-        planOf(item).forEach((row) => {
+        const plan = planOf(item);
+        const bar = document.createElement("div");
+        bar.className = "plan-open";
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "plan-toggle";
+        toggle.id = "plan-toggle";
+        toggle.setAttribute("aria-expanded", planExpanded ? "true" : "false");
+        const title = document.createElement("span");
+        title.textContent = "План тренировки";
+        toggle.append(title);
+        toggle.insertAdjacentHTML("beforeend", '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6"/></svg>');
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "plan-edit";
+        edit.id = "plan-edit";
+        edit.textContent = plan.length ? "Изменить" : "Создать";
+        bar.append(toggle, edit);
+        workoutStats.append(bar);
+        plan.forEach((row) => {
           const block = document.createElement("div");
           block.className = "plan-block";
           const head = document.createElement("div");
@@ -2226,6 +2269,7 @@
             fact: ""
           });
         });
+        planExpanded = true;
         closeSheet(exercisePicker);
         paintWorkout();
         const inputs = workoutStats.querySelectorAll('input[data-field="plan"]');
@@ -2530,8 +2574,15 @@
         closeSheet(workoutBackdrop);
       });
       workoutStats.addEventListener("click", (event) => {
-        if (event.target.closest("#plan-open")) {
+        if (event.target.closest("#plan-edit")) {
           openExercisePicker();
+          return;
+        }
+        if (event.target.closest("#plan-toggle")) {
+          planExpanded = !planExpanded;
+          workoutStats.classList.toggle("plan-collapsed", !planExpanded);
+          const toggle = document.getElementById("plan-toggle");
+          if (toggle) toggle.setAttribute("aria-expanded", planExpanded ? "true" : "false");
           return;
         }
         const remove = event.target.closest("[data-remove-plan]");
