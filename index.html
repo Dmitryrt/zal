@@ -585,26 +585,24 @@
       background: #1c1c1e;
     }
 
-    .plan-sets select {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 46px;
+    .sheet .plan-sets input {
+      width: 28px;
       height: 48px;
       margin: 0;
+      padding: 0;
       border: 0;
       border-radius: 0;
       background: transparent;
       color: var(--ink);
-      font: inherit;
       font-size: 1.2rem;
       font-weight: 650;
       font-variant-numeric: tabular-nums;
       text-align: center;
-      text-align-last: center;
-      padding: 0;
     }
 
-    .plan-sets select.is-empty { color: #636366; }
+    .sheet .plan-sets input[data-part="reps"] { width: 36px; }
+    .sheet .plan-sets input::placeholder { color: #636366; }
+    .sheet .plan-sets input:focus { outline: none; }
 
     .plan-times {
       width: 16px;
@@ -2254,24 +2252,30 @@
         return `${sets || ""} x ${reps || ""}`.trim();
       }
 
-      function planSelect(row, field, part, max, selected) {
-        const select = document.createElement("select");
-        select.dataset.row = row.id;
-        select.dataset.field = field;
-        select.dataset.part = part;
-        const empty = document.createElement("option");
-        empty.value = "";
-        empty.textContent = "—";
-        select.append(empty);
-        for (let n = 1; n <= max; n += 1) {
-          const option = document.createElement("option");
-          option.value = String(n);
-          option.textContent = String(n);
-          select.append(option);
-        }
-        select.value = selected;
-        if (!selected) select.classList.add("is-empty");
-        return select;
+      function keepRange(raw, max, previous) {
+        const digits = String(raw || "").replace(/\D/g, "");
+        if (!digits) return "";
+        const n = Number(max === 5 ? digits.slice(-1) : digits.slice(0, 2));
+        if (n >= 1 && n <= max) return String(n);
+        return previous || "";
+      }
+
+      function planNumber(row, field, part, selected) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.inputMode = "numeric";
+        input.autocomplete = "off";
+        input.enterKeyHint = "done";
+        input.placeholder = "–";
+        input.maxLength = part === "sets" ? 1 : 2;
+        input.setAttribute("aria-label", part === "sets" ? "от 1 до 5" : "от 1 до 10");
+        input.dataset.row = row.id;
+        input.dataset.field = field;
+        input.dataset.part = part;
+        input.dataset.last = selected;
+        input.value = selected;
+        if (!selected) input.classList.add("is-empty");
+        return input;
       }
 
       function planField(row, field, labelText) {
@@ -2284,9 +2288,9 @@
         times.className = "plan-times";
         times.textContent = "×";
         box.append(
-          planSelect(row, field, "sets", 5, sets),
+          planNumber(row, field, "sets", sets),
           times,
-          planSelect(row, field, "reps", 10, reps)
+          planNumber(row, field, "reps", reps)
         );
         label.append(box);
         return label;
@@ -2667,14 +2671,18 @@
         const remove = event.target.closest("[data-remove-plan]");
         if (remove) removePlanRow(remove.dataset.removePlan);
       });
-      workoutStats.addEventListener("change", (event) => {
-        const select = event.target.closest("select[data-row]");
-        if (!select) return;
-        const box = select.closest(".plan-sets");
+      workoutStats.addEventListener("input", (event) => {
+        const input = event.target.closest("input[data-row]");
+        if (!input) return;
+        const max = input.dataset.part === "sets" ? 5 : 10;
+        const next = keepRange(input.value, max, input.dataset.last || "");
+        input.value = next;
+        input.dataset.last = next;
+        input.classList.toggle("is-empty", !next);
+        const box = input.closest(".plan-sets");
         const sets = box.querySelector('[data-part="sets"]').value;
         const reps = box.querySelector('[data-part="reps"]').value;
-        select.classList.toggle("is-empty", !select.value);
-        schedulePlanSave(select.dataset.row, select.dataset.field, formatPlan(sets, reps));
+        schedulePlanSave(input.dataset.row, input.dataset.field, formatPlan(sets, reps));
       });
       workoutStats.addEventListener("focusout", () => {
         flushPlanSave();
