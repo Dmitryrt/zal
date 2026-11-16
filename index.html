@@ -632,6 +632,19 @@
 
     .plan-sets select[data-part="reps"] { width: 44px; }
     .plan-sets select.is-empty { color: #636366; }
+    .plan-sets select option { color: var(--ink); }
+
+    .plan-block.is-hit .plan-weight,
+    .plan-block.is-hit .plan-sets {
+      background: #12341c;
+      box-shadow: inset 0 0 0 1px rgba(48, 209, 88, 0.45);
+    }
+
+    .plan-block.is-hit .plan-weight,
+    .plan-block.is-hit .plan-sets select,
+    .plan-block.is-hit .plan-times {
+      color: #30d158;
+    }
 
     .plan-times {
       width: 16px;
@@ -2245,7 +2258,7 @@
         workoutStats.append(bar);
         plan.forEach((row) => {
           const block = document.createElement("div");
-          block.className = "plan-block";
+          block.className = "plan-block" + (planHit(row) ? " is-hit" : "");
           const head = document.createElement("div");
           head.className = "plan-head";
           const title = document.createElement("span");
@@ -2272,6 +2285,22 @@
           sets >= 1 && sets <= 5 ? String(sets) : "",
           reps >= 1 && reps <= 10 ? String(reps) : ""
         ];
+      }
+
+      function planHit(row) {
+        const plan = planParts(row && row.plan);
+        const fact = planParts(row && row.fact);
+        return Boolean(plan[0] && plan[1] && plan[0] === fact[0] && plan[1] === fact[1]);
+      }
+
+      function markHit(rowId) {
+        const item = workoutsFor(selectedKey).find((entry) => entry.id === openWorkoutId);
+        const row = item && planOf(item).find((entry) => entry.id === rowId);
+        workoutStats.querySelectorAll(".plan-block").forEach((block) => {
+          const id = block.querySelector("[data-row]");
+          if (!id || id.dataset.row !== rowId) return;
+          block.classList.toggle("is-hit", planHit(row));
+        });
       }
 
       function formatPlan(sets, reps) {
@@ -2374,6 +2403,7 @@
         row[field] = String(value || "").slice(0, 40);
         target.plan = plan;
         stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
+        markHit(rowId);
         clearTimeout(planSaveTimer);
         planSaveTimer = setTimeout(() => {
           planSaveTimer = 0;
