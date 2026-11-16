@@ -249,6 +249,27 @@
       pointer-events: none;
     }
 
+    .cardio-mark {
+      position: absolute;
+      z-index: 2;
+      left: 50%;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      transform: translate(8px, 3px);
+      filter: drop-shadow(0 0 1px #000);
+    }
+    .day .cardio-mark svg {
+      position: static;
+      inset: auto;
+      width: 14px;
+      height: 14px;
+      margin: 0;
+    }
+
     .day.muted.has-marks .num { opacity: 0.45; }
 
     .day.muted { color: var(--dim); }
@@ -1537,10 +1558,15 @@
       function marksFor(key) {
         const workouts = workoutsFor(key);
         for (let i = workouts.length - 1; i >= 0; i--) {
+          if (workouts[i].typeId === "cardio") continue;
           const kind = typeById(workouts[i].typeId);
           if (kind && kind.image) return [kind];
         }
         return [];
+      }
+
+      function hasCardio(key) {
+        return workoutsFor(key).some((item) => item.typeId === "cardio");
       }
 
       function dayPayload(key) {
@@ -1803,6 +1829,12 @@
               num.textContent = date.getDate();
             }
             btn.appendChild(num);
+            if (hasCardio(key)) {
+              const heart = document.createElement("span");
+              heart.className = "cardio-mark";
+              heart.innerHTML = '<svg viewBox="0 0 24 24" fill="#ff2d3a" aria-hidden="true"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35Z"/></svg>';
+              btn.appendChild(heart);
+            }
             row.appendChild(btn);
           });
           return row;
