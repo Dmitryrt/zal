@@ -912,6 +912,24 @@
       font-weight: 600;
       letter-spacing: -0.02em;
     }
+
+    .plan-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .plan-badge.ok {
+      color: #30d158;
+      background: rgba(48, 209, 88, 0.12);
+    }
+    .plan-badge.miss {
+      color: #e07a72;
+      background: rgba(224, 122, 114, 0.1);
+    }
     .remove {
       width: 32px;
       height: 32px;
@@ -1825,13 +1843,16 @@
             const name = document.createElement("span");
             name.className = "name";
             name.textContent = item.name;
+            const badge = item.typeId === "gym" ? gymBadge(gymOnPlan(item)) : null;
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "remove";
             remove.dataset.id = item.id;
             remove.setAttribute("aria-label", `Убрать ${item.name}`);
             remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
-            row.append(pic, name, remove);
+            row.append(pic, name);
+            if (badge) row.append(badge);
+            row.append(remove);
             return row;
           }));
         } else {
@@ -2293,6 +2314,32 @@
         return Boolean(plan[0] && plan[1] && plan[0] === fact[0] && plan[1] === fact[1]);
       }
 
+      function gymOnPlan(item) {
+        const rows = planOf(item);
+        return rows.length > 0 && rows.every(planHit);
+      }
+
+      function gymBadge(done) {
+        const badge = document.createElement("span");
+        badge.className = "plan-badge " + (done ? "ok" : "miss");
+        badge.setAttribute("aria-label", done ? "Тренировка по плану" : "Тренировка не по плану");
+        badge.innerHTML = done
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7"/></svg>'
+          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+        return badge;
+      }
+
+      function refreshGymBadge() {
+        const item = workoutsFor(selectedKey).find((entry) => entry.id === openWorkoutId);
+        if (!item || item.typeId !== "gym") return;
+        const row = dayWorkoutsEl.querySelector(`.day-workout[data-id="${openWorkoutId}"]`);
+        if (!row) return;
+        const next = gymBadge(gymOnPlan(item));
+        const current = row.querySelector(".plan-badge");
+        if (current) current.replaceWith(next);
+        else row.insertBefore(next, row.querySelector(".remove"));
+      }
+
       function markHit(rowId) {
         const item = workoutsFor(selectedKey).find((entry) => entry.id === openWorkoutId);
         const row = item && planOf(item).find((entry) => entry.id === rowId);
@@ -2301,6 +2348,7 @@
           if (!id || id.dataset.row !== rowId) return;
           block.classList.toggle("is-hit", planHit(row));
         });
+        refreshGymBadge();
       }
 
       function formatPlan(sets, reps) {
