@@ -626,12 +626,17 @@
 
     .measure-head {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
       margin: 0 6px 12px;
     }
     .measure-head .picker-title { margin: 0; }
+    .measure-month-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     .measure-month {
       margin: 0;
       font-size: 1.02rem;
@@ -639,9 +644,21 @@
       letter-spacing: -0.02em;
       white-space: nowrap;
     }
+    .measure-add {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 50%;
+      background: #2c2c2e;
+      color: var(--ink);
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    .measure-add:active { transform: scale(0.94); }
     .measure-track { touch-action: pan-y; }
     #measure-screen.swiping .measure-track,
-    #measure-screen.swiping .measure-month { transition: none; }
+    #measure-screen.swiping .measure-month-wrap { transition: none; }
     .weight-kg input:focus,
     .weight-date:focus { outline: none; }
     .weight-kg input::placeholder,
@@ -1250,7 +1267,12 @@
       </button>
       <div class="measure-head">
         <h2 class="picker-title" id="measure-title">Замеры тела</h2>
-        <p class="measure-month" id="measure-month">Декабрь</p>
+        <div class="measure-month-wrap" id="measure-month-wrap">
+          <p class="measure-month" id="measure-month">Декабрь</p>
+          <button class="measure-add" id="measure-add" type="button" aria-label="Новый месяц">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
       </div>
       <p class="catalog-hint records-hint">Сантиметры, только цифры</p>
       <div class="measure-track" id="measure-track">
@@ -1537,6 +1559,7 @@
       let frequentIds = [];
       let exercises = [];
       let measurements = {};
+      let measureMonths = [`${new Date().getFullYear()}-12`];
       let measureCursor = new Date(new Date().getFullYear(), 11, 1);
       const MEASURE_IDS = ["neck", "shoulders", "chest", "bicepsL", "bicepsR", "forearmL", "forearmR", "waist", "hips", "thighL", "thighR", "calfL", "calfR"];
       let openWorkoutId = "";
@@ -1705,6 +1728,7 @@
           frequentIds,
           exercises,
           measurements,
+          measureMonths,
           catalogVersion: CATALOG_VERSION
         }));
         setUrl();
@@ -1980,12 +2004,29 @@
         return next;
       }
 
+      function normalizeMonthList(list, sheets) {
+        const keys = new Set();
+        const add = (key) => {
+          if (/^\d{4}-\d{2}$/.test(String(key || ""))) keys.add(String(key));
+        };
+        if (Array.isArray(list)) list.forEach(add);
+        if (sheets && typeof sheets === "object") Object.keys(sheets).forEach(add);
+        if (!keys.size) keys.add(`${new Date().getFullYear()}-12`);
+        return [...keys].sort();
+      }
+
       function writeMeasurements() {
         persistLocal();
         if (!cloudReady || skipCloud) return;
         const ref = journalRef().child("measurements");
         if (!Object.keys(measurements).length) ref.remove().catch(cloudError);
         else ref.set(measurements).catch(cloudError);
+      }
+
+      function writeMeasureMonths() {
+        persistLocal();
+        if (!cloudReady || skipCloud) return;
+        journalRef().child("measureMonths").set(measureMonths).catch(cloudError);
       }
 
       function writeExercises() {
@@ -2428,6 +2469,11 @@
           measurements = normalizeMeasurements(value.measurements);
         } else if (value && !value.measurements) {
           measurements = {};
+        }
+        measureMonths = normalizeMonthList(value && value.measureMonths, measurements);
+        if (!measureMonths.includes(viewKey())) {
+          const [year, month] = measureMonths[0].split("-").map(Number);
+          measureCursor = new Date(year, month - 1, 1);
         }
         persistLocal();
         render();
@@ -2991,7 +3037,7 @@
         journalRef().on("value", (snap) => {
           const value = snap.val();
           if (!value) {
-            if (seedLocal && (stepGoal !== DEFAULT_GOAL || Object.keys(days).length || frequentIds.length || Object.keys(measurements).length)) {
+            if (seedLocal && (stepGoal !== DEFAULT_GOAL || Object.keys(days).length || frequentIds.length || Object.keys(measurements).length || measureMonths.length > 1)) {
               const payload = {
                 settings: { stepGoal },
                 days
@@ -2999,6 +3045,7 @@
               if (frequentIds.length) payload.frequentTypes = frequentIds;
               if (exercises.length) payload.exercises = exercises;
               if (Object.keys(measurements).length) payload.measurements = measurements;
+              if (measureMonths.length) payload.measureMonths = measureMonths;
               journalRef().set(payload).catch(cloudError);
             }
             pullGarminSteps();
@@ -3173,6 +3220,7 @@
       const measureScreen = document.getElementById("measure-screen");
       const measureTrack = document.getElementById("measure-track");
       const measureMonthEl = document.getElementById("measure-month");
+      const measureMonthWrap = document.getElementById("measure-month-wrap");
       const trendDown = document.getElementById("trend-down");
       const trendUp = document.getElementById("trend-up");
       const bodyBoard = document.getElementById("body-board");
@@ -3265,8 +3313,25 @@
       }
 
       function shiftMeasureMonth(delta) {
+        const keys = measureMonths.slice().sort();
+        const next = keys[keys.indexOf(viewKey()) + delta];
+        if (!next) return;
         flushMeasures();
-        measureCursor = new Date(measureCursor.getFullYear(), measureCursor.getMonth() + delta, 1);
+        const [year, month] = next.split("-").map(Number);
+        measureCursor = new Date(year, month - 1, 1);
+        fillMeasures();
+      }
+
+      function addMeasureMonth() {
+        flushMeasures();
+        const last = measureMonths.slice().sort().pop();
+        const [year, month] = last.split("-").map(Number);
+        const created = new Date(year, month, 1);
+        const key = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}`;
+        if (!measureMonths.includes(key)) measureMonths.push(key);
+        measureMonths.sort();
+        measureCursor = new Date(created.getFullYear(), created.getMonth(), 1);
+        writeMeasureMonths();
         fillMeasures();
       }
 
@@ -3354,9 +3419,14 @@
         }
         if (measureSwipe.axis !== "x") return;
         const width = measureScreen.offsetWidth || 1;
-        const shift = Math.max(-0.35, Math.min(0.35, dx / width));
+        const keys = measureMonths.slice().sort();
+        const index = keys.indexOf(viewKey());
+        let shift = dx / width;
+        if (index <= 0 && shift > 0) shift = 0;
+        if (index >= keys.length - 1 && shift < 0) shift = 0;
+        shift = Math.max(-0.35, Math.min(0.35, shift));
         measureTrack.style.transform = `translateX(${shift * 100}%)`;
-        measureMonthEl.style.transform = `translateX(${shift * 28}%)`;
+        measureMonthWrap.style.transform = `translateX(${shift * 28}%)`;
       });
       function endMeasureSwipe(event) {
         if (!measureSwipe || (event && event.pointerId !== measureSwipe.id)) return;
@@ -3365,7 +3435,7 @@
         const id = measureSwipe.id;
         measureSwipe = null;
         measureTrack.style.transform = "";
-        measureMonthEl.style.transform = "";
+        measureMonthWrap.style.transform = "";
         measureScreen.classList.remove("swiping");
         try { measureScreen.releasePointerCapture(id); } catch (_) {}
         if (axis !== "x" || Math.abs(dx) < 48) return;
@@ -3376,9 +3446,10 @@
         if (!measureSwipe) return;
         measureSwipe = null;
         measureTrack.style.transform = "";
-        measureMonthEl.style.transform = "";
+        measureMonthWrap.style.transform = "";
         measureScreen.classList.remove("swiping");
       });
+      document.getElementById("measure-add").addEventListener("click", addMeasureMonth);
 
       document.getElementById("settings-btn").addEventListener("click", () => {
         goalInput.value = String(stepGoal);
@@ -3604,13 +3675,18 @@
       if (stored.days && typeof stored.days === "object") days = stored.days;
       if (stored.exercises) exercises = normalizeExercises(stored.exercises);
       if (stored.measurements) measurements = normalizeMeasurements(stored.measurements);
+      measureMonths = normalizeMonthList(stored.measureMonths, measurements);
+      if (!measureMonths.includes(viewKey())) {
+        const [year, month] = measureMonths[0].split("-").map(Number);
+        measureCursor = new Date(year, month - 1, 1);
+      }
       if (stored.catalogVersion === CATALOG_VERSION) {
         frequentIds = normalizeFrequent(stored.frequentIds);
       } else {
         frequentIds = [];
         cleanDayWorkouts();
       }
-      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length || exercises.length || Object.keys(measurements).length);
+      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length || exercises.length || Object.keys(measurements).length || measureMonths.length > 1);
       persistLocal();
       render();
       window.addEventListener("resize", fitMascot);
