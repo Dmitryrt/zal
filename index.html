@@ -561,6 +561,61 @@
       font-weight: 600;
     }
 
+    .weight-row {
+      margin-top: 16px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 2px 0;
+      border-top: 1px solid #3a3a3c;
+    }
+    .weight-label {
+      font-size: 1.05rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+    .weight-kg {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: #1c1c1e;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    .weight-kg input,
+    .weight-date {
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 650;
+      font-size: 1.05rem;
+      padding: 0;
+    }
+    .weight-kg input {
+      width: 52px;
+      text-align: right;
+    }
+    .weight-date {
+      width: 118px;
+      height: 40px;
+      margin-left: auto;
+      border-radius: 12px;
+      background: #1c1c1e;
+      text-align: center;
+    }
+    .weight-kg input:focus,
+    .weight-date:focus { outline: none; }
+    .weight-kg input::placeholder,
+    .weight-date::placeholder {
+      color: #636366;
+      font-weight: 600;
+    }
+
     .sheet-hint {
       margin: 10px 0 0;
       color: var(--muted);
@@ -1238,6 +1293,14 @@
         <label class="measure-pill" style="left:79.44%;top:63.46%"><input data-part="thighR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Бедро" aria-label="Бедро правое"></label>
         <label class="measure-pill" style="left:79.44%;top:77.88%"><input data-part="calfR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Икра" aria-label="Икра правая"></label>
       </div>
+      <div class="weight-row">
+        <span class="weight-label">Вес</span>
+        <label class="weight-kg">
+          <input id="weight-input" type="text" inputmode="decimal" maxlength="5" autocomplete="off" placeholder="70" aria-label="Вес в килограммах">
+          <span>кг</span>
+        </label>
+        <input id="weight-date" class="weight-date" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="12.03.2026" aria-label="Дата веса">
+      </div>
     </div>
   </div>
 
@@ -1801,6 +1864,42 @@
         return String(Number(digits));
       }
 
+      function cleanBodyWeight(value) {
+        const raw = String(value == null ? "" : value).replace(",", ".").replace(/[^\d.]/g, "");
+        const dot = raw.indexOf(".");
+        if (dot === -1) return raw.slice(0, 3).replace(/^0+(?=\d)/, "");
+        let whole = raw.slice(0, dot).slice(0, 3).replace(/^0+(?=\d)/, "");
+        const frac = raw.slice(dot + 1).replace(/\./g, "").slice(0, 1);
+        if (!whole) whole = "0";
+        if (!frac && raw.endsWith(".")) return `${whole}.`;
+        return frac ? `${whole}.${frac}` : whole;
+      }
+
+      function todayStamp() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${pad(now.getDate())}.${pad(now.getMonth() + 1)}.${now.getFullYear()}`;
+      }
+
+      function formatWeightDate(value) {
+        const digits = String(value == null ? "" : value).replace(/\D/g, "").slice(0, 8);
+        let out = digits.slice(0, 2);
+        if (digits.length > 2) out += `.${digits.slice(2, 4)}`;
+        if (digits.length > 4) out += `.${digits.slice(4, 8)}`;
+        return out;
+      }
+
+      function validWeightDate(value) {
+        const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value || "");
+        if (!match) return false;
+        const day = Number(match[1]);
+        const month = Number(match[2]);
+        const year = Number(match[3]);
+        if (month < 1 || month > 12 || year < 2000 || year > 2100) return false;
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+      }
+
       function normalizeMeasurements(value) {
         const next = {};
         if (!value || typeof value !== "object") return next;
@@ -1812,6 +1911,12 @@
           const clean = cleanMeasure(src[id]);
           if (clean) next[id] = clean;
         });
+        const weight = cleanBodyWeight(src.weight).replace(/\.$/, "");
+        const kilos = Number(weight);
+        if (weight && Number.isFinite(kilos) && kilos > 0 && kilos <= 400) {
+          next.weight = String(kilos);
+          next.weightDate = validWeightDate(src.weightDate) ? src.weightDate : todayStamp();
+        }
         return next;
       }
 
@@ -3007,12 +3112,35 @@
 
       const measureScreen = document.getElementById("measure-screen");
       const bodyBoard = document.getElementById("body-board");
+      const bodyWeightInput = document.getElementById("weight-input");
+      const weightDateInput = document.getElementById("weight-date");
       let measureTimer = 0;
 
       function fillMeasures() {
         bodyBoard.querySelectorAll("input[data-part]").forEach((input) => {
           input.value = measurements[input.dataset.part] || "";
         });
+        bodyWeightInput.value = measurements.weight || "";
+        weightDateInput.value = measurements.weightDate || "";
+      }
+
+      function applyWeightFields() {
+        const weight = cleanBodyWeight(bodyWeightInput.value).replace(/\.$/, "");
+        const kilos = Number(weight);
+        if (weight && Number.isFinite(kilos) && kilos > 0 && kilos <= 400) {
+          measurements.weight = String(kilos);
+          if (validWeightDate(weightDateInput.value)) measurements.weightDate = weightDateInput.value;
+          else if (!validWeightDate(measurements.weightDate)) {
+            measurements.weightDate = todayStamp();
+            weightDateInput.value = measurements.weightDate;
+          }
+          return;
+        }
+        if (!String(bodyWeightInput.value || "").trim()) {
+          delete measurements.weight;
+          delete measurements.weightDate;
+          weightDateInput.value = "";
+        }
       }
 
       function flushMeasures() {
@@ -3030,6 +3158,14 @@
         flushMeasures();
         closeSheet(measureScreen);
       });
+      function scheduleMeasures() {
+        clearTimeout(measureTimer);
+        measureTimer = setTimeout(() => {
+          measureTimer = 0;
+          writeMeasurements();
+        }, 300);
+      }
+
       bodyBoard.addEventListener("input", (event) => {
         const input = event.target.closest("input[data-part]");
         if (!input || !MEASURE_IDS.includes(input.dataset.part)) return;
@@ -3037,11 +3173,32 @@
         if (input.value !== next) input.value = next;
         if (next) measurements[input.dataset.part] = next;
         else delete measurements[input.dataset.part];
-        clearTimeout(measureTimer);
-        measureTimer = setTimeout(() => {
-          measureTimer = 0;
-          writeMeasurements();
-        }, 300);
+        scheduleMeasures();
+      });
+      bodyWeightInput.addEventListener("input", () => {
+        const next = cleanBodyWeight(bodyWeightInput.value);
+        if (bodyWeightInput.value !== next) bodyWeightInput.value = next;
+        applyWeightFields();
+        scheduleMeasures();
+      });
+      weightDateInput.addEventListener("input", () => {
+        const next = formatWeightDate(weightDateInput.value);
+        if (weightDateInput.value !== next) weightDateInput.value = next;
+        if (validWeightDate(next)) measurements.weightDate = next;
+        if (measurements.weight) scheduleMeasures();
+      });
+      weightDateInput.addEventListener("blur", () => {
+        if (!measurements.weight) return;
+        if (!validWeightDate(weightDateInput.value)) {
+          weightDateInput.value = validWeightDate(measurements.weightDate) ? measurements.weightDate : todayStamp();
+          measurements.weightDate = weightDateInput.value;
+          scheduleMeasures();
+        }
+      });
+      bodyWeightInput.addEventListener("blur", () => {
+        if (bodyWeightInput.value.endsWith(".")) bodyWeightInput.value = bodyWeightInput.value.slice(0, -1);
+        applyWeightFields();
+        scheduleMeasures();
       });
 
       document.getElementById("settings-btn").addEventListener("click", () => {
