@@ -601,13 +601,47 @@
       text-align: right;
     }
     .weight-date {
-      width: 118px;
+      width: 112px;
       height: 40px;
-      margin-left: auto;
       border-radius: 12px;
       background: #1c1c1e;
       text-align: center;
+      flex-shrink: 0;
     }
+    .weight-trends {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .trend {
+      width: 22px;
+      height: 22px;
+      opacity: 0.32;
+    }
+    .trend.down { color: #ff2d55; }
+    .trend.up { color: #30d158; }
+    .trend.on { opacity: 1; }
+
+    .measure-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 6px 12px;
+    }
+    .measure-head .picker-title { margin: 0; }
+    .measure-month {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+    .measure-track { touch-action: pan-y; }
+    #measure-screen.swiping .measure-track,
+    #measure-screen.swiping .measure-month { transition: none; }
     .weight-kg input:focus,
     .weight-date:focus { outline: none; }
     .weight-kg input::placeholder,
@@ -1214,8 +1248,12 @@
       <button class="catalog-grab" id="measure-close" type="button" aria-label="Назад">
         <span></span>
       </button>
-      <h2 class="picker-title" id="measure-title">Замеры тела</h2>
+      <div class="measure-head">
+        <h2 class="picker-title" id="measure-title">Замеры тела</h2>
+        <p class="measure-month" id="measure-month">Декабрь</p>
+      </div>
       <p class="catalog-hint records-hint">Сантиметры, только цифры</p>
+      <div class="measure-track" id="measure-track">
       <div class="body-board" id="body-board">
         <svg class="body-chart" viewBox="0 0 360 520" aria-hidden="true">
           <defs>
@@ -1299,7 +1337,12 @@
           <input id="weight-input" type="text" inputmode="decimal" maxlength="5" autocomplete="off" placeholder="70" aria-label="Вес в килограммах">
           <span>кг</span>
         </label>
+        <span class="weight-trends" aria-hidden="true">
+          <svg class="trend down on" id="trend-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M7 14l5 5 5-5"/></svg>
+          <svg class="trend up on" id="trend-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M7 10l5-5 5 5"/></svg>
+        </span>
         <input id="weight-date" class="weight-date" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="12.03.2026" aria-label="Дата веса">
+      </div>
       </div>
     </div>
   </div>
@@ -1494,6 +1537,7 @@
       let frequentIds = [];
       let exercises = [];
       let measurements = {};
+      let measureCursor = new Date(new Date().getFullYear(), 11, 1);
       const MEASURE_IDS = ["neck", "shoulders", "chest", "bicepsL", "bicepsR", "forearmL", "forearmR", "waist", "hips", "thighL", "thighR", "calfL", "calfR"];
       let openWorkoutId = "";
       let planSaveTimer = 0;
@@ -1900,23 +1944,39 @@
         return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
       }
 
-      function normalizeMeasurements(value) {
+      function normalizeSheet(src) {
         const next = {};
-        if (!value || typeof value !== "object") return next;
-        const src = Object.assign({}, value);
-        if (src.biceps && !src.bicepsL) src.bicepsL = src.biceps;
-        if (src.thigh && !src.thighL) src.thighL = src.thigh;
-        if (src.calf && !src.calfL) src.calfL = src.calf;
+        if (!src || typeof src !== "object") return next;
+        const copy = Object.assign({}, src);
+        if (copy.biceps && !copy.bicepsL) copy.bicepsL = copy.biceps;
+        if (copy.thigh && !copy.thighL) copy.thighL = copy.thigh;
+        if (copy.calf && !copy.calfL) copy.calfL = copy.calf;
         MEASURE_IDS.forEach((id) => {
-          const clean = cleanMeasure(src[id]);
+          const clean = cleanMeasure(copy[id]);
           if (clean) next[id] = clean;
         });
-        const weight = cleanBodyWeight(src.weight).replace(/\.$/, "");
+        const weight = cleanBodyWeight(copy.weight).replace(/\.$/, "");
         const kilos = Number(weight);
         if (weight && Number.isFinite(kilos) && kilos > 0 && kilos <= 400) {
           next.weight = String(kilos);
-          next.weightDate = validWeightDate(src.weightDate) ? src.weightDate : todayStamp();
+          next.weightDate = validWeightDate(copy.weightDate) ? copy.weightDate : todayStamp();
         }
+        return next;
+      }
+
+      function normalizeMeasurements(value) {
+        const next = {};
+        if (!value || typeof value !== "object") return next;
+        const monthKeys = Object.keys(value).filter((key) => /^\d{4}-\d{2}$/.test(key));
+        if (monthKeys.length) {
+          monthKeys.forEach((key) => {
+            const sheet = normalizeSheet(value[key]);
+            if (Object.keys(sheet).length) next[key] = sheet;
+          });
+          return next;
+        }
+        const sheet = normalizeSheet(value);
+        if (Object.keys(sheet).length) next[`${new Date().getFullYear()}-12`] = sheet;
         return next;
       }
 
@@ -3111,35 +3171,89 @@
       });
 
       const measureScreen = document.getElementById("measure-screen");
+      const measureTrack = document.getElementById("measure-track");
+      const measureMonthEl = document.getElementById("measure-month");
+      const trendDown = document.getElementById("trend-down");
+      const trendUp = document.getElementById("trend-up");
       const bodyBoard = document.getElementById("body-board");
       const bodyWeightInput = document.getElementById("weight-input");
       const weightDateInput = document.getElementById("weight-date");
       let measureTimer = 0;
+      let measureSwipe = null;
+
+      function viewKey(date = measureCursor) {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      }
+
+      function readSheet() {
+        return measurements[viewKey()] || {};
+      }
+
+      function writeSheet(sheet) {
+        const key = viewKey();
+        const next = {};
+        Object.keys(sheet).forEach((id) => {
+          if (sheet[id] !== "" && sheet[id] != null) next[id] = sheet[id];
+        });
+        if (Object.keys(next).length) measurements[key] = next;
+        else delete measurements[key];
+      }
+
+      function measureMonthLabel() {
+        const name = MONTHS[measureCursor.getMonth()];
+        const year = measureCursor.getFullYear();
+        return year === new Date().getFullYear() ? name : `${name} ${year}`;
+      }
+
+      function updateTrends() {
+        const current = Number(readSheet().weight);
+        const earlier = Object.keys(measurements)
+          .filter((key) => key < viewKey() && measurements[key] && measurements[key].weight)
+          .sort();
+        const previous = earlier.length ? Number(measurements[earlier[earlier.length - 1]].weight) : NaN;
+        trendDown.classList.remove("on");
+        trendUp.classList.remove("on");
+        if (!Number.isFinite(current) || !Number.isFinite(previous) || current === previous) {
+          trendDown.classList.add("on");
+          trendUp.classList.add("on");
+          return;
+        }
+        if (current < previous) trendDown.classList.add("on");
+        else trendUp.classList.add("on");
+      }
 
       function fillMeasures() {
+        const sheet = readSheet();
         bodyBoard.querySelectorAll("input[data-part]").forEach((input) => {
-          input.value = measurements[input.dataset.part] || "";
+          input.value = sheet[input.dataset.part] || "";
         });
-        bodyWeightInput.value = measurements.weight || "";
-        weightDateInput.value = measurements.weightDate || "";
+        bodyWeightInput.value = sheet.weight || "";
+        weightDateInput.value = sheet.weightDate || "";
+        measureMonthEl.textContent = measureMonthLabel();
+        updateTrends();
       }
 
       function applyWeightFields() {
+        const sheet = Object.assign({}, readSheet());
         const weight = cleanBodyWeight(bodyWeightInput.value).replace(/\.$/, "");
         const kilos = Number(weight);
         if (weight && Number.isFinite(kilos) && kilos > 0 && kilos <= 400) {
-          measurements.weight = String(kilos);
-          if (validWeightDate(weightDateInput.value)) measurements.weightDate = weightDateInput.value;
-          else if (!validWeightDate(measurements.weightDate)) {
-            measurements.weightDate = todayStamp();
-            weightDateInput.value = measurements.weightDate;
+          sheet.weight = String(kilos);
+          if (validWeightDate(weightDateInput.value)) sheet.weightDate = weightDateInput.value;
+          else if (!validWeightDate(sheet.weightDate)) {
+            sheet.weightDate = todayStamp();
+            weightDateInput.value = sheet.weightDate;
           }
+          writeSheet(sheet);
+          updateTrends();
           return;
         }
         if (!String(bodyWeightInput.value || "").trim()) {
-          delete measurements.weight;
-          delete measurements.weightDate;
+          delete sheet.weight;
+          delete sheet.weightDate;
           weightDateInput.value = "";
+          writeSheet(sheet);
+          updateTrends();
         }
       }
 
@@ -3148,6 +3262,12 @@
         clearTimeout(measureTimer);
         measureTimer = 0;
         writeMeasurements();
+      }
+
+      function shiftMeasureMonth(delta) {
+        flushMeasures();
+        measureCursor = new Date(measureCursor.getFullYear(), measureCursor.getMonth() + delta, 1);
+        fillMeasures();
       }
 
       document.getElementById("measure-open").addEventListener("click", () => {
@@ -3171,8 +3291,10 @@
         if (!input || !MEASURE_IDS.includes(input.dataset.part)) return;
         const next = cleanMeasure(input.value);
         if (input.value !== next) input.value = next;
-        if (next) measurements[input.dataset.part] = next;
-        else delete measurements[input.dataset.part];
+        const sheet = Object.assign({}, readSheet());
+        if (next) sheet[input.dataset.part] = next;
+        else delete sheet[input.dataset.part];
+        writeSheet(sheet);
         scheduleMeasures();
       });
       bodyWeightInput.addEventListener("input", () => {
@@ -3184,14 +3306,21 @@
       weightDateInput.addEventListener("input", () => {
         const next = formatWeightDate(weightDateInput.value);
         if (weightDateInput.value !== next) weightDateInput.value = next;
-        if (validWeightDate(next)) measurements.weightDate = next;
-        if (measurements.weight) scheduleMeasures();
+        if (validWeightDate(next)) {
+          const sheet = Object.assign({}, readSheet());
+          sheet.weightDate = next;
+          writeSheet(sheet);
+        }
+        if (readSheet().weight) scheduleMeasures();
       });
       weightDateInput.addEventListener("blur", () => {
-        if (!measurements.weight) return;
+        const sheet = readSheet();
+        if (!sheet.weight) return;
         if (!validWeightDate(weightDateInput.value)) {
-          weightDateInput.value = validWeightDate(measurements.weightDate) ? measurements.weightDate : todayStamp();
-          measurements.weightDate = weightDateInput.value;
+          weightDateInput.value = validWeightDate(sheet.weightDate) ? sheet.weightDate : todayStamp();
+          const next = Object.assign({}, readSheet());
+          next.weightDate = weightDateInput.value;
+          writeSheet(next);
           scheduleMeasures();
         }
       });
@@ -3199,6 +3328,56 @@
         if (bodyWeightInput.value.endsWith(".")) bodyWeightInput.value = bodyWeightInput.value.slice(0, -1);
         applyWeightFields();
         scheduleMeasures();
+      });
+
+      measureScreen.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        if (event.target.closest("input, button, textarea, select")) return;
+        measureSwipe = {
+          x: event.clientX,
+          y: event.clientY,
+          id: event.pointerId,
+          axis: null
+        };
+      });
+      measureScreen.addEventListener("pointermove", (event) => {
+        if (!measureSwipe || event.pointerId !== measureSwipe.id) return;
+        const dx = event.clientX - measureSwipe.x;
+        const dy = event.clientY - measureSwipe.y;
+        if (!measureSwipe.axis) {
+          if (Math.hypot(dx, dy) < 12) return;
+          measureSwipe.axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+          if (measureSwipe.axis === "x") {
+            measureScreen.classList.add("swiping");
+            try { measureScreen.setPointerCapture(measureSwipe.id); } catch (_) {}
+          }
+        }
+        if (measureSwipe.axis !== "x") return;
+        const width = measureScreen.offsetWidth || 1;
+        const shift = Math.max(-0.35, Math.min(0.35, dx / width));
+        measureTrack.style.transform = `translateX(${shift * 100}%)`;
+        measureMonthEl.style.transform = `translateX(${shift * 28}%)`;
+      });
+      function endMeasureSwipe(event) {
+        if (!measureSwipe || (event && event.pointerId !== measureSwipe.id)) return;
+        const dx = event.clientX - measureSwipe.x;
+        const axis = measureSwipe.axis;
+        const id = measureSwipe.id;
+        measureSwipe = null;
+        measureTrack.style.transform = "";
+        measureMonthEl.style.transform = "";
+        measureScreen.classList.remove("swiping");
+        try { measureScreen.releasePointerCapture(id); } catch (_) {}
+        if (axis !== "x" || Math.abs(dx) < 48) return;
+        shiftMeasureMonth(dx < 0 ? 1 : -1);
+      }
+      measureScreen.addEventListener("pointerup", endMeasureSwipe);
+      measureScreen.addEventListener("pointercancel", () => {
+        if (!measureSwipe) return;
+        measureSwipe = null;
+        measureTrack.style.transform = "";
+        measureMonthEl.style.transform = "";
+        measureScreen.classList.remove("swiping");
       });
 
       document.getElementById("settings-btn").addEventListener("click", () => {
