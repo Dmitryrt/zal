@@ -514,58 +514,52 @@
     .settings-link:active { opacity: 0.6; }
 
     #measure-screen { z-index: 45; }
+    #measure-screen .catalog-inner { padding-left: 8px; padding-right: 8px; }
 
     .body-board {
       position: relative;
-      height: 540px;
-      margin-top: 4px;
+      width: 100%;
+      aspect-ratio: 360 / 660;
+      margin-top: 2px;
     }
 
-    .body-figure {
+    .body-chart {
       position: absolute;
-      left: 50%;
-      top: 8px;
-      width: 92px;
-      height: 500px;
-      transform: translateX(-50%);
-      color: #d1d1d6;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
     }
 
-    .measure-tag {
+    .measure-pill {
       position: absolute;
-      width: 112px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      transform: translateY(-50%);
-      color: var(--muted);
-      font-size: 0.78rem;
+      width: 19.44%;
+      height: 4.55%;
     }
-    .measure-tag.left { left: 0; align-items: flex-start; }
-    .measure-tag.right { right: 0; align-items: flex-end; }
-
-    .measure-line {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .measure-tag.right .measure-line { flex-direction: row-reverse; }
-
-    .measure-line input {
-      width: 54px;
-      height: 36px;
-      border: 0;
-      border-radius: 10px;
+    .measure-pill input {
+      width: 100%;
+      height: 100%;
+      border: 1px solid #48484a;
+      border-radius: 999px;
       background: #1c1c1e;
-      color: var(--ink);
+      color: #fff;
       font: inherit;
-      font-size: 1rem;
+      font-size: 15px;
       font-weight: 650;
       text-align: center;
-      padding: 0;
+      padding: 0 4px;
     }
-    .measure-line input:focus { outline: none; }
-    .measure-line svg { color: #8e8e93; flex-shrink: 0; }
+    .measure-pill input:focus {
+      outline: none;
+      border-color: #fff;
+      background: #2c2c2e;
+    }
+    .measure-pill input::placeholder {
+      color: #8e8e93;
+      font-size: 11px;
+      font-weight: 600;
+    }
 
     .sheet-hint {
       margin: 10px 0 0;
@@ -1168,24 +1162,86 @@
       <h2 class="picker-title" id="measure-title">Замеры тела</h2>
       <p class="catalog-hint records-hint">Сантиметры, только цифры</p>
       <div class="body-board" id="body-board">
-        <svg class="body-figure" viewBox="0 0 140 480" aria-hidden="true">
-          <circle cx="70" cy="34" r="22" fill="#1c1c1e" stroke="currentColor" stroke-width="2.4"/>
-          <path d="M61 54h18l3 18H58Z" fill="#1c1c1e" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
-          <path d="M34 84c12-10 24-14 36-14s24 4 36 14l6 52c2 30-4 58-12 78l-6 16H46l-6-16c-8-20-14-48-12-78Z" fill="#1c1c1e" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
-          <path d="M36 92c-14 10-20 34-18 62 1 18 4 32 6 42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
-          <path d="M104 92c14 10 20 34 18 62-1 18-4 32-6 42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
-          <path d="M56 228c-6 54-8 112-4 168" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
-          <path d="M84 228c6 54 8 112 4 168" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
-          <path d="M40 400h20M80 400h22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+        <svg class="body-chart" viewBox="0 0 360 660" aria-hidden="true">
+          <g id="leg-l">
+            <path fill="#efc2ab" d="M158 236c-16 18-28 58-22 108-4 36-8 70-4 108-2 40 0 78 2 118 2 24-18 36-22 30 18 12 50 8 54-6 2-30-4-70 0-112 2-36 6-72 8-108 2-28 8-70 4-96l-20-42z"/>
+            <path fill="#e4b197" opacity=".5" d="M152 268c-8 30-12 64-6 100 2 22 0 44 2 66 8-30 8-62 4-96-2-22 0-46 0-70z"/>
+          </g>
+          <use href="#leg-l" transform="translate(360 0) scale(-1 1)"/>
+          <path fill="#efc2ab" d="M146 214h68c8 26 2 64-14 82-12 12-18 14-20 14s-8-2-20-14c-16-18-22-56-14-82z"/>
+          <path id="arm-l" fill="#f0c6ad" d="M132 104c-20 8-34 30-32 56-2 22-10 42-12 66-2 24-4 46-2 66 2 16 10 26 18 24 6-2 8-12 8-22 0-22 2-44 6-64 4-22 10-42 18-60 6-16 8-32 2-44-4-6-4-16-6-22z"/>
+          <use href="#arm-l" transform="translate(360 0) scale(-1 1)"/>
+          <path fill="#f3c7ae" d="M124 108c14-16 36-22 48-12l16 4c12-10 34-4 48 12 10 18 8 50-2 78-8 24-20 40-30 48h-48c-10-8-22-24-30-48-10-28-12-60-2-78z"/>
+          <path fill="#e7b59f" opacity=".7" d="M164 126c-10 4-16 12-14 18 6-6 16-8 24-4-2-6-6-12-10-14zm32 0c4 2 8 8 10 14 8-4 18-2 24 4 2-6-4-14-14-18z"/>
+          <path fill="none" stroke="#e0ae98" stroke-width="1.2" opacity=".9" d="M180 154v46M168 166h24M168 180h24M170 194h20"/>
+          <path fill="#f4f4f6" d="M148 232h64c2 16-10 32-32 34s-34-18-32-34z"/>
+          <path fill="#e7e7ea" d="M150 232h60v6h-60z"/>
+          <path fill="#efc2ab" d="M166 74h28l5 30h-38z"/>
+          <ellipse cx="156" cy="54" rx="5.5" ry="8" fill="#e8b89e"/>
+          <ellipse cx="204" cy="54" rx="5.5" ry="8" fill="#e8b89e"/>
+          <ellipse cx="180" cy="50" rx="24" ry="28" fill="#f6d0b8"/>
+          <path fill="#3a312c" d="M160 52C158 30 168 18 180 18s22 12 20 34c-6-12-14-16-20-16s-14 4-20 16z"/>
+          <ellipse cx="171" cy="52" rx="2.1" ry="2.5" fill="#2c241f"/>
+          <ellipse cx="189" cy="52" rx="2.1" ry="2.5" fill="#2c241f"/>
+          <path fill="none" stroke="#3a312c" stroke-width="1.3" stroke-linecap="round" d="M166 46q5-3 10 0M184 46q5-3 10 0"/>
+          <path fill="none" stroke="#d7a890" stroke-width="1.3" stroke-linecap="round" d="M180 56v8"/>
+          <path fill="none" stroke="#c48474" stroke-width="1.4" stroke-linecap="round" d="M173 72q7 5 14 0"/>
+          <g fill="none" stroke="#b7b7bc" stroke-width="1.35">
+            <line x1="74" y1="64" x2="168" y2="86"/>
+            <line x1="74" y1="128" x2="126" y2="112"/>
+            <line x1="74" y1="192" x2="104" y2="168"/>
+            <line x1="74" y1="256" x2="98" y2="228"/>
+            <line x1="74" y1="320" x2="156" y2="178"/>
+            <line x1="74" y1="384" x2="142" y2="340"/>
+            <line x1="74" y1="448" x2="138" y2="432"/>
+            <line x1="74" y1="512" x2="136" y2="500"/>
+            <line x1="74" y1="576" x2="138" y2="575"/>
+            <line x1="286" y1="128" x2="214" y2="138"/>
+            <line x1="286" y1="192" x2="256" y2="168"/>
+            <line x1="286" y1="256" x2="262" y2="228"/>
+            <line x1="286" y1="320" x2="216" y2="232"/>
+            <line x1="286" y1="384" x2="218" y2="340"/>
+            <line x1="286" y1="448" x2="222" y2="432"/>
+            <line x1="286" y1="512" x2="224" y2="500"/>
+            <line x1="286" y1="576" x2="222" y2="575"/>
+          </g>
+          <g fill="#1c1c1e" stroke="#fff" stroke-width="1.3">
+            <circle cx="168" cy="86" r="3.3"/>
+            <circle cx="126" cy="112" r="3.3"/>
+            <circle cx="104" cy="168" r="3.3"/>
+            <circle cx="98" cy="228" r="3.3"/>
+            <circle cx="156" cy="178" r="3.3"/>
+            <circle cx="142" cy="340" r="3.3"/>
+            <circle cx="138" cy="432" r="3.3"/>
+            <circle cx="136" cy="500" r="3.3"/>
+            <circle cx="138" cy="575" r="3.3"/>
+            <circle cx="214" cy="138" r="3.3"/>
+            <circle cx="256" cy="168" r="3.3"/>
+            <circle cx="262" cy="228" r="3.3"/>
+            <circle cx="216" cy="232" r="3.3"/>
+            <circle cx="218" cy="340" r="3.3"/>
+            <circle cx="222" cy="432" r="3.3"/>
+            <circle cx="224" cy="500" r="3.3"/>
+            <circle cx="222" cy="575" r="3.3"/>
+          </g>
         </svg>
-        <label class="measure-tag left" style="top: 14%">Шея<span class="measure-line"><input data-part="neck" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Шея"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
-        <label class="measure-tag right" style="top: 18%">Плечи<span class="measure-line"><input data-part="shoulders" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Плечи"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
-        <label class="measure-tag left" style="top: 28%">Грудь<span class="measure-line"><input data-part="chest" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Грудь"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
-        <label class="measure-tag right" style="top: 34%">Бицепс<span class="measure-line"><input data-part="biceps" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Бицепс"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
-        <label class="measure-tag left" style="top: 42%">Талия<span class="measure-line"><input data-part="waist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Талия"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
-        <label class="measure-tag left" style="top: 52%">Бёдра<span class="measure-line"><input data-part="hips" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Бёдра"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
-        <label class="measure-tag right" style="top: 62%">Бедро<span class="measure-line"><input data-part="thigh" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Бедро"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
-        <label class="measure-tag right" style="top: 78%">Икры<span class="measure-line"><input data-part="calf" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Икры"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
+        <label class="measure-pill" style="left:1.11%;top:7.42%"><input data-part="neck" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Шея" aria-label="Шея"></label>
+        <label class="measure-pill" style="left:1.11%;top:17.12%"><input data-part="shoulders" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Плечи" aria-label="Плечи"></label>
+        <label class="measure-pill" style="left:1.11%;top:26.82%"><input data-part="bicepsL" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Бицепс" aria-label="Бицепс левый"></label>
+        <label class="measure-pill" style="left:1.11%;top:36.52%"><input data-part="forearmL" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Предпл." aria-label="Предплечье левое"></label>
+        <label class="measure-pill" style="left:1.11%;top:46.21%"><input data-part="waist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Талия" aria-label="Талия"></label>
+        <label class="measure-pill" style="left:1.11%;top:55.91%"><input data-part="thighL" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Бедро" aria-label="Бедро левое"></label>
+        <label class="measure-pill" style="left:1.11%;top:65.61%"><input data-part="kneeL" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Колено" aria-label="Колено левое"></label>
+        <label class="measure-pill" style="left:1.11%;top:75.30%"><input data-part="calfL" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Икра" aria-label="Икра левая"></label>
+        <label class="measure-pill" style="left:1.11%;top:85%"><input data-part="ankleL" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Лодыжка" aria-label="Лодыжка левая"></label>
+        <label class="measure-pill" style="left:79.44%;top:17.12%"><input data-part="chest" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Грудь" aria-label="Грудь"></label>
+        <label class="measure-pill" style="left:79.44%;top:26.82%"><input data-part="bicepsR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Бицепс" aria-label="Бицепс правый"></label>
+        <label class="measure-pill" style="left:79.44%;top:36.52%"><input data-part="forearmR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Предпл." aria-label="Предплечье правое"></label>
+        <label class="measure-pill" style="left:79.44%;top:46.21%"><input data-part="hips" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Таз" aria-label="Таз"></label>
+        <label class="measure-pill" style="left:79.44%;top:55.91%"><input data-part="thighR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Бедро" aria-label="Бедро правое"></label>
+        <label class="measure-pill" style="left:79.44%;top:65.61%"><input data-part="kneeR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Колено" aria-label="Колено правое"></label>
+        <label class="measure-pill" style="left:79.44%;top:75.30%"><input data-part="calfR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Икра" aria-label="Икра правая"></label>
+        <label class="measure-pill" style="left:79.44%;top:85%"><input data-part="ankleR" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Лодыжка" aria-label="Лодыжка правая"></label>
       </div>
     </div>
   </div>
@@ -1380,7 +1436,7 @@
       let frequentIds = [];
       let exercises = [];
       let measurements = {};
-      const MEASURE_IDS = ["neck", "shoulders", "chest", "biceps", "waist", "hips", "thigh", "calf"];
+      const MEASURE_IDS = ["neck", "shoulders", "chest", "bicepsL", "bicepsR", "forearmL", "forearmR", "waist", "hips", "thighL", "thighR", "kneeL", "kneeR", "calfL", "calfR", "ankleL", "ankleR"];
       let openWorkoutId = "";
       let planSaveTimer = 0;
       let planExpanded = true;
@@ -1753,8 +1809,12 @@
       function normalizeMeasurements(value) {
         const next = {};
         if (!value || typeof value !== "object") return next;
+        const src = Object.assign({}, value);
+        if (src.biceps && !src.bicepsL) src.bicepsL = src.biceps;
+        if (src.thigh && !src.thighL) src.thighL = src.thigh;
+        if (src.calf && !src.calfL) src.calfL = src.calf;
         MEASURE_IDS.forEach((id) => {
-          const clean = cleanMeasure(value[id]);
+          const clean = cleanMeasure(src[id]);
           if (clean) next[id] = clean;
         });
         return next;
