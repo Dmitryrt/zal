@@ -492,6 +492,81 @@
 
     .sheet-save:active { transform: scale(0.99); }
 
+    .settings-link {
+      width: 100%;
+      margin-top: 16px;
+      min-height: 52px;
+      padding: 12px 0 0;
+      border: 0;
+      border-top: 1px solid #3a3a3c;
+      background: transparent;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 1.05rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+      text-align: left;
+    }
+    .settings-link svg { color: #636366; flex-shrink: 0; }
+    .settings-link:active { opacity: 0.6; }
+
+    #measure-screen { z-index: 45; }
+
+    .body-board {
+      position: relative;
+      height: 540px;
+      margin-top: 4px;
+    }
+
+    .body-figure {
+      position: absolute;
+      left: 50%;
+      top: 8px;
+      width: 92px;
+      height: 500px;
+      transform: translateX(-50%);
+      color: #d1d1d6;
+    }
+
+    .measure-tag {
+      position: absolute;
+      width: 112px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .measure-tag.left { left: 0; align-items: flex-start; }
+    .measure-tag.right { right: 0; align-items: flex-end; }
+
+    .measure-line {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .measure-tag.right .measure-line { flex-direction: row-reverse; }
+
+    .measure-line input {
+      width: 54px;
+      height: 36px;
+      border: 0;
+      border-radius: 10px;
+      background: #1c1c1e;
+      color: var(--ink);
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 650;
+      text-align: center;
+      padding: 0;
+    }
+    .measure-line input:focus { outline: none; }
+    .measure-line svg { color: #8e8e93; flex-shrink: 0; }
+
     .sheet-hint {
       margin: 10px 0 0;
       color: var(--muted);
@@ -1077,7 +1152,41 @@
         Цель шагов в день
         <input id="goal-input" type="number" min="1000" max="100000" step="500" inputmode="numeric">
       </label>
+      <button class="settings-link" id="measure-open" type="button">
+        Замеры тела
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
+      </button>
       <button class="sheet-save" id="goal-save" type="button">Сохранить</button>
+    </div>
+  </div>
+
+  <div class="catalog picker hidden" id="measure-screen" role="dialog" aria-labelledby="measure-title">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="measure-close" type="button" aria-label="Назад">
+        <span></span>
+      </button>
+      <h2 class="picker-title" id="measure-title">Замеры тела</h2>
+      <p class="catalog-hint records-hint">Сантиметры, только цифры</p>
+      <div class="body-board" id="body-board">
+        <svg class="body-figure" viewBox="0 0 140 480" aria-hidden="true">
+          <circle cx="70" cy="34" r="22" fill="#1c1c1e" stroke="currentColor" stroke-width="2.4"/>
+          <path d="M61 54h18l3 18H58Z" fill="#1c1c1e" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <path d="M34 84c12-10 24-14 36-14s24 4 36 14l6 52c2 30-4 58-12 78l-6 16H46l-6-16c-8-20-14-48-12-78Z" fill="#1c1c1e" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+          <path d="M36 92c-14 10-20 34-18 62 1 18 4 32 6 42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+          <path d="M104 92c14 10 20 34 18 62-1 18-4 32-6 42" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+          <path d="M56 228c-6 54-8 112-4 168" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
+          <path d="M84 228c6 54 8 112 4 168" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
+          <path d="M40 400h20M80 400h22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
+        </svg>
+        <label class="measure-tag left" style="top: 14%">Шея<span class="measure-line"><input data-part="neck" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Шея"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
+        <label class="measure-tag right" style="top: 18%">Плечи<span class="measure-line"><input data-part="shoulders" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Плечи"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
+        <label class="measure-tag left" style="top: 28%">Грудь<span class="measure-line"><input data-part="chest" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Грудь"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
+        <label class="measure-tag right" style="top: 34%">Бицепс<span class="measure-line"><input data-part="biceps" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Бицепс"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
+        <label class="measure-tag left" style="top: 42%">Талия<span class="measure-line"><input data-part="waist" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Талия"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
+        <label class="measure-tag left" style="top: 52%">Бёдра<span class="measure-line"><input data-part="hips" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Бёдра"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 6h26M22 2l7 4-7 4"/></svg></span></label>
+        <label class="measure-tag right" style="top: 62%">Бедро<span class="measure-line"><input data-part="thigh" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Бедро"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
+        <label class="measure-tag right" style="top: 78%">Икры<span class="measure-line"><input data-part="calf" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Икры"><svg width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M33 6H7M12 2 5 6l7 4"/></svg></span></label>
+      </div>
     </div>
   </div>
 
@@ -1270,6 +1379,8 @@
       let days = {};
       let frequentIds = [];
       let exercises = [];
+      let measurements = {};
+      const MEASURE_IDS = ["neck", "shoulders", "chest", "biceps", "waist", "hips", "thigh", "calf"];
       let openWorkoutId = "";
       let planSaveTimer = 0;
       let planExpanded = true;
@@ -1435,6 +1546,7 @@
           days,
           frequentIds,
           exercises,
+          measurements,
           catalogVersion: CATALOG_VERSION
         }));
         setUrl();
@@ -1630,6 +1742,30 @@
         persistLocal();
         if (!cloudReady || skipCloud) return;
         journalRef().child("frequentTypes").set(frequentIds).catch(cloudError);
+      }
+
+      function cleanMeasure(value) {
+        const digits = String(value == null ? "" : value).replace(/\D/g, "").slice(0, 3);
+        if (!digits) return "";
+        return String(Number(digits));
+      }
+
+      function normalizeMeasurements(value) {
+        const next = {};
+        if (!value || typeof value !== "object") return next;
+        MEASURE_IDS.forEach((id) => {
+          const clean = cleanMeasure(value[id]);
+          if (clean) next[id] = clean;
+        });
+        return next;
+      }
+
+      function writeMeasurements() {
+        persistLocal();
+        if (!cloudReady || skipCloud) return;
+        const ref = journalRef().child("measurements");
+        if (!Object.keys(measurements).length) ref.remove().catch(cloudError);
+        else ref.set(measurements).catch(cloudError);
       }
 
       function writeExercises() {
@@ -2067,6 +2203,11 @@
           exercises = normalizeExercises(value.exercises);
         } else if (value && !value.exercises) {
           exercises = [];
+        }
+        if (value && value.measurements) {
+          measurements = normalizeMeasurements(value.measurements);
+        } else if (value && !value.measurements) {
+          measurements = {};
         }
         persistLocal();
         render();
@@ -2630,13 +2771,14 @@
         journalRef().on("value", (snap) => {
           const value = snap.val();
           if (!value) {
-            if (seedLocal && (stepGoal !== DEFAULT_GOAL || Object.keys(days).length || frequentIds.length)) {
+            if (seedLocal && (stepGoal !== DEFAULT_GOAL || Object.keys(days).length || frequentIds.length || Object.keys(measurements).length)) {
               const payload = {
                 settings: { stepGoal },
                 days
               };
               if (frequentIds.length) payload.frequentTypes = frequentIds;
               if (exercises.length) payload.exercises = exercises;
+              if (Object.keys(measurements).length) payload.measurements = measurements;
               journalRef().set(payload).catch(cloudError);
             }
             pullGarminSteps();
@@ -2806,6 +2948,45 @@
         closeSheet(distanceBackdrop);
         toast("Дистанция записана вручную — Garmin её не перезапишет");
         render();
+      });
+
+      const measureScreen = document.getElementById("measure-screen");
+      const bodyBoard = document.getElementById("body-board");
+      let measureTimer = 0;
+
+      function fillMeasures() {
+        bodyBoard.querySelectorAll("input[data-part]").forEach((input) => {
+          input.value = measurements[input.dataset.part] || "";
+        });
+      }
+
+      function flushMeasures() {
+        if (!measureTimer) return;
+        clearTimeout(measureTimer);
+        measureTimer = 0;
+        writeMeasurements();
+      }
+
+      document.getElementById("measure-open").addEventListener("click", () => {
+        fillMeasures();
+        openSheet(measureScreen);
+      });
+      document.getElementById("measure-close").addEventListener("click", () => {
+        flushMeasures();
+        closeSheet(measureScreen);
+      });
+      bodyBoard.addEventListener("input", (event) => {
+        const input = event.target.closest("input[data-part]");
+        if (!input || !MEASURE_IDS.includes(input.dataset.part)) return;
+        const next = cleanMeasure(input.value);
+        if (input.value !== next) input.value = next;
+        if (next) measurements[input.dataset.part] = next;
+        else delete measurements[input.dataset.part];
+        clearTimeout(measureTimer);
+        measureTimer = setTimeout(() => {
+          measureTimer = 0;
+          writeMeasurements();
+        }, 300);
       });
 
       document.getElementById("settings-btn").addEventListener("click", () => {
@@ -2978,6 +3159,11 @@
       });
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
+        if (!measureScreen.classList.contains("hidden")) {
+          flushMeasures();
+          closeSheet(measureScreen);
+          return;
+        }
         if (!exercisePicker.classList.contains("hidden")) {
           closeSheet(exercisePicker);
           return;
@@ -3026,13 +3212,14 @@
       if (typeof stored.stepGoal === "number" && stored.stepGoal > 0) stepGoal = stored.stepGoal;
       if (stored.days && typeof stored.days === "object") days = stored.days;
       if (stored.exercises) exercises = normalizeExercises(stored.exercises);
+      if (stored.measurements) measurements = normalizeMeasurements(stored.measurements);
       if (stored.catalogVersion === CATALOG_VERSION) {
         frequentIds = normalizeFrequent(stored.frequentIds);
       } else {
         frequentIds = [];
         cleanDayWorkouts();
       }
-      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length || exercises.length);
+      seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length || exercises.length || Object.keys(measurements).length);
       persistLocal();
       render();
       window.addEventListener("resize", fitMascot);
