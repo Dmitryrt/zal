@@ -494,9 +494,9 @@
 
     .settings-link {
       width: 100%;
-      margin-top: 16px;
+      margin-top: 4px;
       min-height: 52px;
-      padding: 12px 0 0;
+      padding: 14px 0;
       border: 0;
       border-top: 1px solid #3a3a3c;
       background: transparent;
@@ -510,8 +510,12 @@
       letter-spacing: -0.02em;
       text-align: left;
     }
-    .settings-link svg { color: #636366; flex-shrink: 0; }
+    .settings-link svg { color: #636366; flex-shrink: 0; transition: transform 0.18s ease; }
+    .settings-link[aria-expanded="true"] svg { transform: rotate(90deg); }
     .settings-link:active { opacity: 0.6; }
+    .settings-panel[hidden] { display: none; }
+    .settings-panel { padding-bottom: 6px; }
+    .settings-panel input { margin-top: 0; }
 
     #measure-screen { z-index: 45; }
     #measure-screen .catalog-inner { padding-left: 8px; padding-right: 8px; }
@@ -1248,15 +1252,18 @@
     <div class="sheet" role="dialog" aria-labelledby="settings-title">
       <div class="grab"></div>
       <h2 id="settings-title">Настройки</h2>
-      <label>
+      <button class="settings-link" id="goal-toggle" type="button" aria-expanded="false" aria-controls="goal-panel">
         Цель шагов в день
-        <input id="goal-input" type="number" min="1000" max="100000" step="500" inputmode="numeric">
-      </label>
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
+      </button>
+      <div class="settings-panel" id="goal-panel" hidden>
+        <input id="goal-input" type="number" min="1000" max="100000" step="500" inputmode="numeric" aria-label="Цель шагов в день">
+        <button class="sheet-save" id="goal-save" type="button">Сохранить</button>
+      </div>
       <button class="settings-link" id="measure-open" type="button">
         Замеры тела
         <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
       </button>
-      <button class="sheet-save" id="goal-save" type="button">Сохранить</button>
     </div>
   </div>
 
@@ -3451,10 +3458,25 @@
       });
       document.getElementById("measure-add").addEventListener("click", addMeasureMonth);
 
+      const goalToggle = document.getElementById("goal-toggle");
+      const goalPanel = document.getElementById("goal-panel");
+
+      function setGoalOpen(open) {
+        goalPanel.hidden = !open;
+        goalToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) goalInput.focus();
+      }
+
+      goalToggle.addEventListener("click", () => {
+        const open = goalPanel.hidden;
+        if (open) goalInput.value = String(stepGoal);
+        setGoalOpen(open);
+      });
+
       document.getElementById("settings-btn").addEventListener("click", () => {
         goalInput.value = String(stepGoal);
+        setGoalOpen(false);
         openSheet(settingsBackdrop);
-        requestAnimationFrame(() => goalInput.focus());
       });
 
       document.getElementById("goal-save").addEventListener("click", () => {
