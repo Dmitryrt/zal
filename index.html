@@ -601,8 +601,9 @@
       padding: 0;
     }
     .weight-kg input {
-      width: 52px;
+      width: 6ch;
       text-align: right;
+      font-variant-numeric: tabular-nums;
     }
     .weight-date {
       width: 112px;
@@ -1363,7 +1364,7 @@
       <div class="weight-row">
         <span class="weight-label">Вес</span>
         <label class="weight-kg">
-          <input id="weight-input" type="text" inputmode="decimal" maxlength="5" autocomplete="off" placeholder="70" aria-label="Вес в килограммах">
+          <input id="weight-input" type="text" inputmode="decimal" lang="ru" maxlength="5" autocomplete="off" placeholder="70,5" aria-label="Вес в килограммах">
           <span>кг</span>
         </label>
         <span class="weight-trends" aria-hidden="true">
@@ -1940,14 +1941,30 @@
       }
 
       function cleanBodyWeight(value) {
-        const raw = String(value == null ? "" : value).replace(",", ".").replace(/[^\d.]/g, "");
-        const dot = raw.indexOf(".");
-        if (dot === -1) return raw.slice(0, 3).replace(/^0+(?=\d)/, "");
-        let whole = raw.slice(0, dot).slice(0, 3).replace(/^0+(?=\d)/, "");
-        const frac = raw.slice(dot + 1).replace(/\./g, "").slice(0, 1);
-        if (!whole) whole = "0";
-        if (!frac && raw.endsWith(".")) return `${whole}.`;
-        return frac ? `${whole}.${frac}` : whole;
+        const text = String(value == null ? "" : value);
+        let whole = "";
+        let frac = "";
+        let sep = false;
+        for (const ch of text) {
+          if (ch >= "0" && ch <= "9") {
+            if (!sep) {
+              if (whole.length < 3) whole += ch;
+            } else if (frac.length < 1) frac += ch;
+          } else if (!sep) sep = true;
+        }
+        whole = whole.replace(/^0+(?=\d)/, "");
+        if (!whole && sep) whole = "0";
+        if (!whole) return "";
+        if (sep && !frac) return `${whole},`;
+        return frac ? `${whole},${frac}` : whole;
+      }
+
+      function storedWeight(value) {
+        const shown = cleanBodyWeight(value).replace(/,$/, "");
+        if (!shown) return "";
+        const kilos = Number(shown.replace(",", "."));
+        if (!Number.isFinite(kilos) || kilos <= 0 || kilos > 400) return "";
+        return String(kilos);
       }
 
       function todayStamp() {
@@ -1986,10 +2003,9 @@
           const clean = cleanMeasure(copy[id]);
           if (clean) next[id] = clean;
         });
-        const weight = cleanBodyWeight(copy.weight).replace(/\.$/, "");
-        const kilos = Number(weight);
-        if (weight && Number.isFinite(kilos) && kilos > 0 && kilos <= 400) {
-          next.weight = String(kilos);
+        const weight = storedWeight(copy.weight);
+        if (weight) {
+          next.weight = weight;
           next.weightDate = validWeightDate(copy.weightDate) ? copy.weightDate : todayStamp();
         }
         return next;
@@ -2841,9 +2857,7 @@
       }
 
       function cleanWeight(value) {
-        const digits = String(value || "").replace(/\D/g, "").slice(0, 3);
-        if (!digits) return "";
-        return String(Number(digits));
+        return cleanBodyWeight(value);
       }
 
       function planCaption(text, control) {
@@ -2858,10 +2872,11 @@
       function weightInput(row) {
         const input = document.createElement("input");
         input.type = "text";
-        input.inputMode = "numeric";
+        input.inputMode = "decimal";
+        input.lang = "ru";
         input.autocomplete = "off";
         input.enterKeyHint = "done";
-        input.maxLength = 3;
+        input.maxLength = 5;
         input.placeholder = "–";
         input.className = "plan-weight";
         input.setAttribute("aria-label", "Вес");
@@ -3282,7 +3297,7 @@
         bodyBoard.querySelectorAll("input[data-part]").forEach((input) => {
           input.value = sheet[input.dataset.part] || "";
         });
-        bodyWeightInput.value = sheet.weight || "";
+        bodyWeightInput.value = storedWeight(sheet.weight).replace(".", ",");
         weightDateInput.value = sheet.weightDate || "";
         measureMonthEl.textContent = measureMonthLabel();
         updateTrends();
@@ -3290,10 +3305,9 @@
 
       function applyWeightFields() {
         const sheet = Object.assign({}, readSheet());
-        const weight = cleanBodyWeight(bodyWeightInput.value).replace(/\.$/, "");
-        const kilos = Number(weight);
-        if (weight && Number.isFinite(kilos) && kilos > 0 && kilos <= 400) {
-          sheet.weight = String(kilos);
+        const weight = storedWeight(bodyWeightInput.value);
+        if (weight) {
+          sheet.weight = weight;
           if (validWeightDate(weightDateInput.value)) sheet.weightDate = weightDateInput.value;
           else if (!validWeightDate(sheet.weightDate)) {
             sheet.weightDate = todayStamp();
@@ -3303,7 +3317,7 @@
           updateTrends();
           return;
         }
-        if (!String(bodyWeightInput.value || "").trim()) {
+        if (!cleanBodyWeight(bodyWeightInput.value).replace(/,$/, "")) {
           delete sheet.weight;
           delete sheet.weightDate;
           weightDateInput.value = "";
@@ -3370,8 +3384,14 @@
         scheduleMeasures();
       });
       bodyWeightInput.addEventListener("input", () => {
-        const next = cleanBodyWeight(bodyWeightInput.value);
-        if (bodyWeightInput.value !== next) bodyWeightInput.value = next;
+        const prev = bodyWeightInput.value;
+        const next = cleanBodyWeight(prev);
+        if (prev !== next) {
+          const at = bodyWeightInput.selectionStart || next.length;
+          bodyWeightInput.value = next;
+          const pos = Math.max(0, Math.min(next.length, at - (prev.length - next.length)));
+          try { bodyWeightInput.setSelectionRange(pos, pos); } catch (_) {}
+        }
         applyWeightFields();
         scheduleMeasures();
       });
@@ -3397,7 +3417,7 @@
         }
       });
       bodyWeightInput.addEventListener("blur", () => {
-        if (bodyWeightInput.value.endsWith(".")) bodyWeightInput.value = bodyWeightInput.value.slice(0, -1);
+        bodyWeightInput.value = storedWeight(bodyWeightInput.value).replace(".", ",");
         applyWeightFields();
         scheduleMeasures();
       });
@@ -3527,9 +3547,15 @@
       workoutStats.addEventListener("input", (event) => {
         const input = event.target.closest("input[data-weight]");
         if (!input) return;
-        const next = cleanWeight(input.value);
-        if (input.value !== next) input.value = next;
-        schedulePlanSave(input.dataset.row, "weight", next);
+        const prev = input.value;
+        const next = cleanWeight(prev);
+        if (prev !== next) {
+          const at = input.selectionStart || next.length;
+          input.value = next;
+          const pos = Math.max(0, Math.min(next.length, at - (prev.length - next.length)));
+          try { input.setSelectionRange(pos, pos); } catch (_) {}
+        }
+        schedulePlanSave(input.dataset.row, "weight", next.replace(/,$/, ""));
       });
       workoutStats.addEventListener("change", (event) => {
         const select = event.target.closest("select[data-row]");
@@ -3540,7 +3566,12 @@
         const reps = box.querySelector('[data-part="reps"]').value;
         schedulePlanSave(select.dataset.row, select.dataset.field, formatPlan(sets, reps));
       });
-      workoutStats.addEventListener("focusout", () => {
+      workoutStats.addEventListener("focusout", (event) => {
+        const input = event.target.closest && event.target.closest("input[data-weight]");
+        if (input && input.value.endsWith(",")) {
+          input.value = input.value.slice(0, -1);
+          schedulePlanSave(input.dataset.row, "weight", input.value);
+        }
         flushPlanSave();
       });
       document.getElementById("exercise-close").addEventListener("click", () => {
