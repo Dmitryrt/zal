@@ -1,0 +1,59 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "rt.dmitry.zal"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "rt.dmitry.zal"
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.12.1"
+}
+
+tasks.register("copyWebAssets", Copy) {
+    into layout.projectDirectory.dir("src/main/assets")
+    from(rootDir.parentFile) {
+        include "*.jpg"
+        include "*.png"
+        include "garmin-steps.json"
+        include "manifest.webmanifest"
+    }
+}
+
+tasks.register("copyIndex", Copy) {
+    into layout.projectDirectory.dir("src/main/assets")
+    from(rootDir.parentFile) {
+        include "index.html"
+    }
+    filter { line ->
+        line.replace(
+            'fetch(`./garmin-steps.json?t=${Date.now()}`',
+            'fetch(`https://dmitryrt.github.io/zal/garmin-steps.json?t=${Date.now()}`'
+        )
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn "copyWebAssets", "copyIndex"
+}
