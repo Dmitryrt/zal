@@ -513,6 +513,74 @@
     .settings-link svg { color: #636366; flex-shrink: 0; transition: transform 0.18s ease; }
     .settings-link[aria-expanded="true"] svg { transform: rotate(90deg); }
     .settings-link:active { opacity: 0.6; }
+    .settings-link[hidden] { display: none; }
+
+    #notify-screen { z-index: 46; }
+    .notify-card {
+      margin: 0 6px 18px;
+      padding: 14px 14px 16px;
+      border-radius: 18px;
+      background: #1c1c1e;
+    }
+    .notify-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .notify-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+    .notify-hint {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    .notify-field {
+      display: block;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    .notify-field input {
+      width: 100%;
+      margin-top: 8px;
+      height: 48px;
+      border: 0;
+      border-radius: 14px;
+      background: #2c2c2e;
+      color: var(--ink);
+      font: inherit;
+      font-size: 1.05rem;
+      font-weight: 650;
+      padding: 0 14px;
+    }
+    .notify-field input:focus { outline: none; }
+    .switch {
+      width: 51px;
+      height: 31px;
+      border: 0;
+      border-radius: 99px;
+      background: #3a3a3c;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      width: 27px;
+      height: 27px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.18s ease;
+    }
+    .switch[aria-checked="true"] { background: #30d158; }
+    .switch[aria-checked="true"]::after { transform: translateX(20px); }
     .settings-panel[hidden] { display: none; }
     .settings-panel { padding-bottom: 6px; }
     .settings-panel input { margin-top: 0; }
@@ -1265,6 +1333,49 @@
         Замеры тела
         <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
       </button>
+      <button class="settings-link" id="notify-open" type="button" hidden>
+        Уведомления
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="catalog picker hidden" id="notify-screen" role="dialog" aria-labelledby="notify-title">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="notify-close" type="button" aria-label="Назад">
+        <span></span>
+      </button>
+      <h2 class="picker-title" id="notify-title">Уведомления</h2>
+      <section class="notify-card">
+        <div class="notify-head">
+          <div>
+            <p class="notify-title">Проверка активностей</p>
+            <p class="notify-hint">Каждый день</p>
+          </div>
+          <button class="switch" id="notify-activity-on" type="button" role="switch" aria-checked="false" aria-label="Проверка активностей"></button>
+        </div>
+        <label class="notify-field">Время
+          <input id="notify-activity-time" type="time" value="21:00" aria-label="Время проверки активностей">
+        </label>
+        <label class="notify-field">Текст
+          <input id="notify-activity-text" type="text" maxlength="120" autocomplete="off" aria-label="Текст проверки активностей">
+        </label>
+      </section>
+      <section class="notify-card">
+        <div class="notify-head">
+          <div>
+            <p class="notify-title">Проверка тела</p>
+            <p class="notify-hint">Раз в месяц, в 10:00</p>
+          </div>
+          <button class="switch" id="notify-body-on" type="button" role="switch" aria-checked="false" aria-label="Проверка тела"></button>
+        </div>
+        <label class="notify-field">День месяца
+          <input id="notify-body-day" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="День месяца для проверки тела">
+        </label>
+        <label class="notify-field">Текст
+          <input id="notify-body-text" type="text" maxlength="120" autocomplete="off" aria-label="Текст проверки тела">
+        </label>
+      </section>
     </div>
   </div>
 
@@ -3371,6 +3482,145 @@
         fillMeasures();
       }
 
+      const NOTIFY_KEY = "zal-notifications";
+      const notifyScreen = document.getElementById("notify-screen");
+      const notifyActivityOn = document.getElementById("notify-activity-on");
+      const notifyBodyOn = document.getElementById("notify-body-on");
+      const notifyActivityTime = document.getElementById("notify-activity-time");
+      const notifyActivityText = document.getElementById("notify-activity-text");
+      const notifyBodyDay = document.getElementById("notify-body-day");
+      const notifyBodyText = document.getElementById("notify-body-text");
+      const notifyDefaults = {
+        activity: { on: false, time: "21:00", text: "Проверь, всё ли записано за сегодня" },
+        body: { on: false, day: 1, text: "Пора записать вес и замеры" }
+      };
+
+      function cleanNotifyTime(value) {
+        const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || ""));
+        if (!match) return notifyDefaults.activity.time;
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+        if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return notifyDefaults.activity.time;
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      }
+
+      function cleanNotifyDay(value) {
+        const day = Number(String(value || "").replace(/\D/g, ""));
+        if (!Number.isInteger(day) || day < 1 || day > 31) return notifyDefaults.body.day;
+        return day;
+      }
+
+      function cleanNotifyText(value, fallback) {
+        const text = String(value || "").replace(/\s+/g, " ").trim().slice(0, 120);
+        return text || fallback;
+      }
+
+      function readNotify() {
+        let raw = null;
+        try { raw = JSON.parse(localStorage.getItem(NOTIFY_KEY) || "null"); } catch (_) {}
+        const activity = raw && raw.activity && typeof raw.activity === "object" ? raw.activity : {};
+        const body = raw && raw.body && typeof raw.body === "object" ? raw.body : {};
+        return {
+          activity: {
+            on: Boolean(activity.on),
+            time: cleanNotifyTime(activity.time),
+            text: cleanNotifyText(activity.text, notifyDefaults.activity.text)
+          },
+          body: {
+            on: Boolean(body.on),
+            day: cleanNotifyDay(body.day),
+            text: cleanNotifyText(body.text, notifyDefaults.body.text)
+          }
+        };
+      }
+
+      function fillNotifyForm(state) {
+        notifyActivityOn.setAttribute("aria-checked", state.activity.on ? "true" : "false");
+        notifyBodyOn.setAttribute("aria-checked", state.body.on ? "true" : "false");
+        notifyActivityTime.value = state.activity.time;
+        notifyActivityText.value = state.activity.text;
+        notifyBodyDay.value = String(state.body.day);
+        notifyBodyText.value = state.body.text;
+      }
+
+      function notifyFromForm() {
+        return {
+          activity: {
+            on: notifyActivityOn.getAttribute("aria-checked") === "true",
+            time: cleanNotifyTime(notifyActivityTime.value),
+            text: cleanNotifyText(notifyActivityText.value, notifyDefaults.activity.text)
+          },
+          body: {
+            on: notifyBodyOn.getAttribute("aria-checked") === "true",
+            day: cleanNotifyDay(notifyBodyDay.value),
+            text: cleanNotifyText(notifyBodyText.value, notifyDefaults.body.text)
+          }
+        };
+      }
+
+      function pushNotify(state) {
+        localStorage.setItem(NOTIFY_KEY, JSON.stringify(state));
+        if (window.ZalNotifications && typeof window.ZalNotifications.save === "function") {
+          window.ZalNotifications.save(JSON.stringify(state));
+        }
+      }
+
+      let notifyTimer = 0;
+      function scheduleNotify() {
+        clearTimeout(notifyTimer);
+        notifyTimer = setTimeout(() => {
+          notifyTimer = 0;
+          pushNotify(notifyFromForm());
+        }, 300);
+      }
+
+      window.zalNotifyDenied = function () {
+        const state = readNotify();
+        state.activity.on = false;
+        state.body.on = false;
+        fillNotifyForm(state);
+        localStorage.setItem(NOTIFY_KEY, JSON.stringify(state));
+        toast("Разрешите уведомления для Зала");
+      };
+
+      document.getElementById("notify-open").addEventListener("click", () => {
+        fillNotifyForm(readNotify());
+        openSheet(notifyScreen);
+      });
+      document.getElementById("notify-close").addEventListener("click", () => closeSheet(notifyScreen));
+      notifyActivityOn.addEventListener("click", () => {
+        notifyActivityOn.setAttribute("aria-checked", notifyActivityOn.getAttribute("aria-checked") === "true" ? "false" : "true");
+        pushNotify(notifyFromForm());
+      });
+      notifyBodyOn.addEventListener("click", () => {
+        notifyBodyOn.setAttribute("aria-checked", notifyBodyOn.getAttribute("aria-checked") === "true" ? "false" : "true");
+        pushNotify(notifyFromForm());
+      });
+      notifyActivityTime.addEventListener("input", scheduleNotify);
+      notifyActivityTime.addEventListener("change", scheduleNotify);
+      notifyActivityText.addEventListener("input", scheduleNotify);
+      notifyBodyDay.addEventListener("input", () => {
+        const next = notifyBodyDay.value.replace(/\D/g, "").slice(0, 2);
+        if (notifyBodyDay.value !== next) notifyBodyDay.value = next;
+        scheduleNotify();
+      });
+      notifyBodyText.addEventListener("input", scheduleNotify);
+      notifyActivityText.addEventListener("blur", () => {
+        const state = notifyFromForm();
+        fillNotifyForm(state);
+        pushNotify(state);
+      });
+      notifyBodyText.addEventListener("blur", () => {
+        const state = notifyFromForm();
+        fillNotifyForm(state);
+        pushNotify(state);
+      });
+      notifyBodyDay.addEventListener("blur", () => {
+        const state = notifyFromForm();
+        fillNotifyForm(state);
+        pushNotify(state);
+      });
+
       document.getElementById("measure-open").addEventListener("click", () => {
         fillMeasures();
         openSheet(measureScreen);
@@ -3689,6 +3939,10 @@
       });
       document.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
+        if (!notifyScreen.classList.contains("hidden")) {
+          closeSheet(notifyScreen);
+          return;
+        }
         if (!measureScreen.classList.contains("hidden")) {
           flushMeasures();
           closeSheet(measureScreen);
@@ -3758,6 +4012,12 @@
       persistLocal();
       render();
       window.addEventListener("resize", fitMascot);
+      if (window.ZalNotifications && typeof window.ZalNotifications.save === "function") {
+        document.getElementById("notify-open").hidden = false;
+        const savedNotify = readNotify();
+        fillNotifyForm(savedNotify);
+        window.ZalNotifications.save(JSON.stringify(savedNotify));
+      }
       watchGarminRefresh();
       connectCloud();
       if (window.ZalHealth && typeof window.ZalHealth.pull === "function") pullGarminSteps();
