@@ -2613,7 +2613,7 @@
           const key = activity.date;
           const typeId = activity.typeId;
           const garminId = activity.garminId == null ? "" : String(activity.garminId);
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(key || "") || !KIND_IDS.has(typeId) || !/^\d+$/.test(garminId)) return;
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(key || "") || !KIND_IDS.has(typeId) || !/^[A-Za-z0-9_-]{1,80}$/.test(garminId)) return;
           if (dismissedFor(key).includes(garminId)) return;
           const kind = typeById(typeId);
           const stats = cleanStats(activity.stats);
@@ -2623,6 +2623,10 @@
             target = workouts.find((item) => item.typeId === typeId && !item.garminId);
             if (target) target.garminId = garminId;
           }
+          if (!target && stats && stats.start) {
+            target = workouts.find((item) => item.typeId === typeId && item.stats && item.stats.start === stats.start);
+          }
+          if (target && dismissedFor(key).includes(String(target.garminId || ""))) return;
           if (target) {
             if (JSON.stringify(target.stats || null) === JSON.stringify(stats) && target.name === kind.name) return;
             target.stats = stats;
@@ -3024,18 +3028,29 @@
         addPlanExercise(exercise);
       }
 
+      function applyHealthPayload(payload) {
+        if (!payload) return false;
+        const stepsChanged = applyGarminSteps(payload);
+        const workoutsChanged = applyGarminWorkouts(payload);
+        if (stepsChanged || workoutsChanged) render();
+        return stepsChanged || workoutsChanged;
+      }
+
       function pullGarminSteps() {
+        if (window.ZalHealth && typeof window.ZalHealth.pull === "function") {
+          window.ZalHealth.pull();
+          return Promise.resolve(false);
+        }
         return fetch(`./garmin-steps.json?t=${Date.now()}`, { cache: "reload" })
           .then((res) => (res.ok ? res.json() : null))
-          .then((payload) => {
-            if (!payload) return false;
-            const stepsChanged = applyGarminSteps(payload);
-            const workoutsChanged = applyGarminWorkouts(payload);
-            if (stepsChanged || workoutsChanged) render();
-            return true;
-          })
+          .then((payload) => applyHealthPayload(payload))
           .catch(() => false);
       }
+
+      window.applyZalHealth = applyHealthPayload;
+      window.zalHealthNote = function (message) {
+        if (message) toast(message);
+      };
 
       function watchGarminRefresh() {
         document.addEventListener("visibilitychange", () => {
@@ -3745,7 +3760,8 @@
       window.addEventListener("resize", fitMascot);
       watchGarminRefresh();
       connectCloud();
-      if (!firebaseConfigured()) pullGarminSteps();
+      if (window.ZalHealth && typeof window.ZalHealth.pull === "function") pullGarminSteps();
+      else if (!firebaseConfigured()) pullGarminSteps();
     })();
   </script>
 </body>
