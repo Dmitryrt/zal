@@ -368,6 +368,14 @@
     .stat-card .label {
       color: var(--muted);
       font-size: 0.86rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .record-cup {
+      color: #e0b84a;
+      display: inline-flex;
+      flex-shrink: 0;
     }
 
     .stat-card .value {
@@ -1187,8 +1195,12 @@
     }
     .day-workout .name {
       flex: 1;
+      min-width: 0;
       font-weight: 600;
       letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .plan-badge {
@@ -1962,6 +1974,74 @@
         });
       }
 
+      const RECORD_WORKOUTS = { snowboard: "maxSpeed", bike: "distanceM" };
+
+      function beatsRecord(value, others) {
+        if (!Number.isFinite(value) || value <= 0) return false;
+        let best = 0;
+        let found = false;
+        others.forEach((item) => {
+          if (!Number.isFinite(item) || item <= 0) return;
+          found = true;
+          if (item > best) best = item;
+        });
+        return found && value > best;
+      }
+
+      function periodKeys(key) {
+        const date = parseKey(key);
+        const year = String(date.getFullYear());
+        return { year, month: `${year}-${pad(date.getMonth() + 1)}` };
+      }
+
+      function dayHoldsRecord(key, read) {
+        const value = read(key);
+        const { year, month } = periodKeys(key);
+        const inMonth = [];
+        const inYear = [];
+        Object.keys(days).forEach((day) => {
+          if (day === key || !day.startsWith(year)) return;
+          const next = read(day);
+          inYear.push(next);
+          if (day.startsWith(month)) inMonth.push(next);
+        });
+        return beatsRecord(value, inMonth) || beatsRecord(value, inYear);
+      }
+
+      function workoutHoldsRecord(key, item) {
+        const field = RECORD_WORKOUTS[item && item.typeId];
+        if (!field || !item.stats) return false;
+        const value = Number(item.stats[field]);
+        const { year, month } = periodKeys(key);
+        const inMonth = [];
+        const inYear = [];
+        Object.keys(days).forEach((day) => {
+          if (!day.startsWith(year)) return;
+          workoutsFor(day).forEach((other) => {
+            if (!other || other === item || (item.id && other.id === item.id)) return;
+            if (other.typeId !== item.typeId || !other.stats) return;
+            const next = Number(other.stats[field]);
+            inYear.push(next);
+            if (day.startsWith(month)) inMonth.push(next);
+          });
+        });
+        return beatsRecord(value, inMonth) || beatsRecord(value, inYear);
+      }
+
+      function recordCup() {
+        const cup = document.createElement("span");
+        cup.className = "record-cup";
+        cup.title = "Рекорд";
+        cup.setAttribute("aria-label", "Рекорд");
+        cup.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.8a2.2 2.2 0 0 0 2.2 4.5"/><path d="M17 6h2.2a2.2 2.2 0 0 1-2.2 4.5"/></svg>';
+        return cup;
+      }
+
+      function labelWithRecord(el, text, record) {
+        el.textContent = text;
+        if (record) el.append(recordCup());
+      }
+
       function formatKmNumber(meters) {
         return (meters / 1000).toFixed(1).replace(".", ",");
       }
@@ -2382,19 +2462,31 @@
         const steps = stepsFor(selectedKey);
         const done = steps >= stepGoal && stepGoal > 0;
         const over = steps > stepGoal && stepGoal > 0;
-        stepsLabel.textContent = selectedKey === today
-          ? "Шаги сегодня"
-          : `Шаги, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
+        labelWithRecord(
+          stepsLabel,
+          selectedKey === today
+            ? "Шаги сегодня"
+            : `Шаги, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`,
+          dayHoldsRecord(selectedKey, stepsFor)
+        );
         stepsValue.textContent = `${formatCount(steps)} / ${formatCount(stepGoal)}`;
         stepsValue.classList.toggle("done", done && !over);
         stepsValue.classList.toggle("over", over);
-        caloriesLabel.textContent = selectedKey === today
-          ? "Активные калории"
-          : `Активные калории, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
+        labelWithRecord(
+          caloriesLabel,
+          selectedKey === today
+            ? "Активные калории"
+            : `Активные калории, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`,
+          dayHoldsRecord(selectedKey, caloriesFor)
+        );
         caloriesValue.textContent = `${formatCount(caloriesFor(selectedKey))} ккал`;
-        distanceLabel.textContent = selectedKey === today
-          ? "Дистанция"
-          : `Дистанция, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`;
+        labelWithRecord(
+          distanceLabel,
+          selectedKey === today
+            ? "Дистанция"
+            : `Дистанция, ${selectedDate.getDate()} ${MONTHS_GEN[selectedDate.getMonth()]}`,
+          dayHoldsRecord(selectedKey, distanceFor)
+        );
         distanceValue.textContent = formatKm(distanceFor(selectedKey));
 
         const weekday = selectedDate.getDay();
@@ -2414,6 +2506,7 @@
             const name = document.createElement("span");
             name.className = "name";
             name.textContent = item.name;
+            if (workoutHoldsRecord(selectedKey, item)) name.append(recordCup());
             const badge = item.typeId === "gym" ? gymBadge(gymOnPlan(item)) : null;
             const remove = document.createElement("button");
             remove.type = "button";
