@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-26T19:14:23Z",
+  "updatedAt": "2026-11-26T19:16:25Z",
   "days": {
     "2026-10-30": {
       "steps": 10567,
@@ -137,9 +137,9 @@
       "distanceM": 6665
     },
     "2026-11-26": {
-      "steps": 8711,
-      "activeCalories": 905,
-      "distanceM": 7110
+      "steps": 9108,
+      "activeCalories": 924,
+      "distanceM": 7428
     }
   },
   "activities": [
@@ -195,6 +195,18 @@
         "calories": 535,
         "avgHr": 133,
         "maxHr": 175
+      }
+    },
+    {
+      "garminId": "25209309195",
+      "date": "2026-11-26",
+      "typeId": "gym",
+      "stats": {
+        "start": "21:02",
+        "durationSec": 3863,
+        "calories": 649,
+        "avgHr": 136,
+        "maxHr": 173
       }
     }
   ]
