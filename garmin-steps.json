@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-26T01:50:33Z",
+  "updatedAt": "2026-11-26T10:55:44Z",
   "days": {
     "2026-10-30": {
       "steps": 10567,
@@ -132,9 +132,14 @@
       "distanceM": 6823
     },
     "2026-11-25": {
-      "steps": 7357,
-      "activeCalories": 369,
-      "distanceM": 5893
+      "steps": 8312,
+      "activeCalories": 403,
+      "distanceM": 6665
+    },
+    "2026-11-26": {
+      "steps": 3179,
+      "activeCalories": 148,
+      "distanceM": 2546
     }
   },
   "activities": [
