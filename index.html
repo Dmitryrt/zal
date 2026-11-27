@@ -771,208 +771,6 @@
       line-height: 1.4;
     }
 
-    .sheet.tall {
-      max-height: min(86dvh, 760px);
-      overflow: auto;
-      scrollbar-width: none;
-    }
-    .sheet.tall::-webkit-scrollbar { display: none; }
-
-    .plan-open {
-      width: 100%;
-      min-height: 48px;
-      margin: 0;
-      padding: 2px 0 12px;
-      border-bottom: 1px solid #3a3a3c;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .plan-toggle {
-      flex: 0 1 auto;
-      min-width: 0;
-      border: 0;
-      background: transparent;
-      color: var(--ink);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0;
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      text-align: left;
-    }
-    .plan-toggle span {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .plan-toggle svg {
-      color: #8e8e93;
-      flex-shrink: 0;
-      transition: transform 0.18s ease;
-    }
-    .plan-collapsed .plan-toggle svg { transform: rotate(-90deg); }
-
-    .plan-edit {
-      flex-shrink: 0;
-      width: 36px;
-      height: 32px;
-      margin-left: auto;
-      border: 0;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--ink);
-      padding: 0;
-      display: grid;
-      place-items: center;
-    }
-    .plan-edit:active, .plan-toggle:active { opacity: 0.6; }
-    .plan-collapsed .plan-block { display: none; }
-
-    .plan-block {
-      padding: 14px 0 4px;
-      border-bottom: 1px solid #3a3a3c;
-    }
-
-    .plan-head {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .plan-title {
-      flex: 1;
-      min-width: 0;
-      font-weight: 650;
-      letter-spacing: -0.02em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .plan-grid {
-      display: grid;
-      grid-template-columns: 68px 1fr 1fr;
-      gap: 8px;
-      align-items: end;
-    }
-
-    .plan-caption {
-      display: block;
-      margin: 0 0 8px;
-      color: var(--muted);
-      font-size: 0.82rem;
-      font-weight: 500;
-    }
-
-    .plan-sets {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 48px;
-      border-radius: 14px;
-      background: #1c1c1e;
-    }
-
-    .sheet .plan-weight {
-      width: 100%;
-      height: 48px;
-      margin: 0;
-      padding: 0;
-      border: 0;
-      border-radius: 14px;
-      background: #1c1c1e;
-      color: var(--ink);
-      font-size: 1.15rem;
-      font-weight: 650;
-      font-variant-numeric: tabular-nums;
-      text-align: center;
-    }
-
-    .sheet .plan-weight::placeholder { color: #636366; }
-    .sheet .plan-weight:focus { outline: none; }
-
-    .plan-sets select {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 36px;
-      height: 48px;
-      margin: 0;
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      color: var(--ink);
-      font: inherit;
-      font-size: 1.2rem;
-      font-weight: 650;
-      font-variant-numeric: tabular-nums;
-      text-align: center;
-      text-align-last: center;
-    }
-
-    .plan-sets select[data-part="reps"] { width: 44px; }
-    .plan-sets select.is-empty { color: #636366; }
-    .plan-sets select option { color: var(--ink); }
-
-    .plan-block.is-hit .plan-weight,
-    .plan-block.is-hit .plan-sets {
-      background: #12341c;
-      box-shadow: inset 0 0 0 1px rgba(48, 209, 88, 0.45);
-    }
-
-    .plan-block.is-hit .plan-weight,
-    .plan-block.is-hit .plan-sets select,
-    .plan-block.is-hit .plan-times {
-      color: #30d158;
-    }
-
-    .plan-times {
-      width: 16px;
-      color: #8e8e93;
-      font-weight: 500;
-      text-align: center;
-    }
-
-    .exercise-create {
-      display: flex;
-      gap: 8px;
-      margin: 0 0 8px;
-    }
-
-    .exercise-create input {
-      flex: 1;
-      min-width: 0;
-      height: 52px;
-      border: 0;
-      border-radius: 14px;
-      background: #1c1c1e;
-      color: var(--ink);
-      font: inherit;
-      font-size: 1.05rem;
-      padding: 0 14px;
-      outline: none;
-    }
-
-    .exercise-create button {
-      flex-shrink: 0;
-      height: 52px;
-      padding: 0 16px;
-      border: 0;
-      border-radius: 14px;
-      background: #fff;
-      color: #111;
-      font-weight: 650;
-    }
-    .exercise-create button:active { transform: scale(0.98); }
-
-    #exercise-picker { z-index: 40; }
-
     .catalog {
       position: fixed;
       inset: 0;
@@ -1203,23 +1001,6 @@
       gap: 6px;
     }
 
-    .plan-badge {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 1.5px solid currentColor;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-    }
-    .plan-badge.ok {
-      color: #30d158;
-      background: rgba(48, 209, 88, 0.12);
-    }
-    .plan-badge.miss {
-      color: #e07a72;
-      background: rgba(224, 122, 114, 0.1);
-    }
     .remove {
       width: 32px;
       height: 32px;
@@ -1584,21 +1365,6 @@
     </div>
   </div>
 
-  <div class="catalog picker hidden" id="exercise-picker" role="dialog" aria-labelledby="exercise-title">
-    <div class="catalog-inner">
-      <button class="catalog-grab" id="exercise-close" type="button" aria-label="Назад">
-        <span></span>
-      </button>
-      <h2 class="picker-title" id="exercise-title">Упражнение</h2>
-      <div class="exercise-create">
-        <input id="exercise-name" type="text" maxlength="40" placeholder="Жим лежа" autocomplete="off" enterkeyhint="done">
-        <button id="exercise-add" type="button">Создать</button>
-      </div>
-      <div class="kind-list" id="exercise-list"></div>
-      <p class="catalog-hint" id="exercise-hint">Выберите упражнение или создайте своё</p>
-    </div>
-  </div>
-
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-database-compat.js"></script>
   <script>
@@ -1678,12 +1444,6 @@
       const pickerEl = document.getElementById("kind-picker");
       const pickerList = document.getElementById("picker-list");
       const catalogHint = document.getElementById("catalog-hint");
-      const exercisePicker = document.getElementById("exercise-picker");
-      const exerciseList = document.getElementById("exercise-list");
-      const exerciseHint = document.getElementById("exercise-hint");
-      const exerciseNameInput = document.getElementById("exercise-name");
-      const workoutSheet = workoutBackdrop.querySelector(".sheet");
-
       let journalId = JOURNAL_ID;
       let stepGoal = DEFAULT_GOAL;
       let days = {};
@@ -1694,8 +1454,6 @@
       let measureCursor = new Date(new Date().getFullYear(), 11, 1);
       const MEASURE_IDS = ["neck", "shoulders", "chest", "bicepsL", "bicepsR", "forearmL", "forearmR", "waist", "hips", "thighL", "thighR", "calfL", "calfR"];
       let openWorkoutId = "";
-      let planSaveTimer = 0;
-      let planExpanded = true;
       let selectedKey = todayKey();
       let monthExpanded = false;
       let cloudReady = false;
@@ -2266,26 +2024,6 @@
         return list;
       }
 
-      function planOf(item) {
-        const raw = item && item.plan;
-        const list = Array.isArray(raw)
-          ? raw
-          : (raw && typeof raw === "object" ? Object.values(raw) : []);
-        return list.map((row) => {
-          if (!row || typeof row !== "object") return null;
-          const name = String(row.name || "").trim().slice(0, 40);
-          if (!name) return null;
-          return {
-            id: String(row.id || uid()),
-            exerciseId: String(row.exerciseId || ""),
-            name,
-            plan: String(row.plan || "").slice(0, 40),
-            fact: String(row.fact || "").slice(0, 40),
-            weight: cleanWeight(row.weight)
-          };
-        }).filter(Boolean);
-      }
-
       function normalizeFrequent(value) {
         const raw = Array.isArray(value)
           ? value
@@ -2507,16 +2245,13 @@
             name.className = "name";
             name.textContent = item.name;
             if (workoutHoldsRecord(selectedKey, item)) name.append(recordCup());
-            const badge = item.typeId === "gym" ? gymBadge(gymOnPlan(item)) : null;
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "remove";
             remove.dataset.id = item.id;
             remove.setAttribute("aria-label", `Убрать ${item.name}`);
             remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
-            row.append(pic, name);
-            if (badge) row.append(badge);
-            row.append(remove);
+            row.append(pic, name, remove);
             return row;
           }));
         } else {
@@ -2898,7 +2633,6 @@
 
       function openWorkout(item) {
         openWorkoutId = item.id;
-        planExpanded = true;
         paintWorkout();
         openSheet(workoutBackdrop);
       }
@@ -2910,17 +2644,11 @@
           return;
         }
         const kind = typeById(item.typeId);
-        const gym = item.typeId === "gym";
-        workoutTitle.hidden = gym;
-        workoutTitle.textContent = gym ? "План тренировки" : (item.name || (kind && kind.name) || "Тренировка");
-        if (gym) workoutSheet.setAttribute("aria-label", "План тренировки");
-        else workoutSheet.removeAttribute("aria-label");
-        workoutSheet.classList.toggle("tall", gym);
-        workoutStats.classList.toggle("plan-collapsed", gym && !planExpanded);
+        workoutTitle.hidden = false;
+        workoutTitle.textContent = item.name || (kind && kind.name) || "Тренировка";
         workoutStats.replaceChildren();
-        if (gym) paintGymPlan(item);
         const lines = workoutLines(item);
-        if (!lines.length && !gym) {
+        if (!lines.length) {
           const empty = document.createElement("p");
           empty.className = "workout-empty";
           empty.textContent = "Garmin пока не прислал цифры по этой тренировке";
@@ -2939,295 +2667,6 @@
           row.append(name, number);
           workoutStats.append(row);
         });
-      }
-
-      function paintGymPlan(item) {
-        const plan = planOf(item);
-        const bar = document.createElement("div");
-        bar.className = "plan-open";
-        const toggle = document.createElement("button");
-        toggle.type = "button";
-        toggle.className = "plan-toggle";
-        toggle.id = "plan-toggle";
-        toggle.setAttribute("aria-expanded", planExpanded ? "true" : "false");
-        const title = document.createElement("span");
-        title.textContent = "План тренировки";
-        toggle.append(title);
-        toggle.insertAdjacentHTML("beforeend", '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6"/></svg>');
-        const edit = document.createElement("button");
-        edit.type = "button";
-        edit.className = "plan-edit";
-        edit.id = "plan-edit";
-        edit.setAttribute("aria-label", "Выбрать упражнение");
-        edit.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>';
-        bar.append(toggle, edit);
-        workoutStats.append(bar);
-        plan.forEach((row) => {
-          const block = document.createElement("div");
-          block.className = "plan-block" + (planHit(row) ? " is-hit" : "");
-          const head = document.createElement("div");
-          head.className = "plan-head";
-          const title = document.createElement("span");
-          title.className = "plan-title";
-          title.textContent = row.name;
-          const remove = document.createElement("button");
-          remove.type = "button";
-          remove.className = "remove";
-          remove.dataset.removePlan = row.id;
-          remove.setAttribute("aria-label", `Убрать ${row.name}`);
-          remove.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
-          head.append(title, remove);
-          block.append(head, planColumns(row));
-          workoutStats.append(block);
-        });
-      }
-
-      function planParts(value) {
-        const match = String(value || "").trim().match(/^(\d+)?\s*[xх×]\s*(\d+)?$/i);
-        if (!match) return ["", ""];
-        const sets = Number(match[1]);
-        const reps = Number(match[2]);
-        return [
-          sets >= 1 && sets <= 5 ? String(sets) : "",
-          reps >= 1 && reps <= 10 ? String(reps) : ""
-        ];
-      }
-
-      function planHit(row) {
-        const plan = planParts(row && row.plan);
-        const fact = planParts(row && row.fact);
-        return Boolean(plan[0] && plan[1] && plan[0] === fact[0] && plan[1] === fact[1]);
-      }
-
-      function gymOnPlan(item) {
-        const rows = planOf(item);
-        return rows.length > 0 && rows.every(planHit);
-      }
-
-      function gymBadge(done) {
-        const badge = document.createElement("span");
-        badge.className = "plan-badge " + (done ? "ok" : "miss");
-        badge.setAttribute("aria-label", done ? "Тренировка по плану" : "Тренировка не по плану");
-        badge.innerHTML = done
-          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 9.5 17 19 7"/></svg>'
-          : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
-        return badge;
-      }
-
-      function refreshGymBadge() {
-        const item = workoutsFor(selectedKey).find((entry) => entry.id === openWorkoutId);
-        if (!item || item.typeId !== "gym") return;
-        const row = dayWorkoutsEl.querySelector(`.day-workout[data-id="${openWorkoutId}"]`);
-        if (!row) return;
-        const next = gymBadge(gymOnPlan(item));
-        const current = row.querySelector(".plan-badge");
-        if (current) current.replaceWith(next);
-        else row.insertBefore(next, row.querySelector(".remove"));
-      }
-
-      function markHit(rowId) {
-        const item = workoutsFor(selectedKey).find((entry) => entry.id === openWorkoutId);
-        const row = item && planOf(item).find((entry) => entry.id === rowId);
-        workoutStats.querySelectorAll(".plan-block").forEach((block) => {
-          const id = block.querySelector("[data-row]");
-          if (!id || id.dataset.row !== rowId) return;
-          block.classList.toggle("is-hit", planHit(row));
-        });
-        refreshGymBadge();
-      }
-
-      function formatPlan(sets, reps) {
-        if (!sets && !reps) return "";
-        return `${sets || ""} x ${reps || ""}`.trim();
-      }
-
-      function planSelect(row, field, part, max, selected) {
-        const select = document.createElement("select");
-        select.dataset.row = row.id;
-        select.dataset.field = field;
-        select.dataset.part = part;
-        select.setAttribute("aria-label", part === "sets" ? "от 1 до 5" : "от 1 до 10");
-        const empty = document.createElement("option");
-        empty.value = "";
-        empty.textContent = "–";
-        select.append(empty);
-        for (let n = 1; n <= max; n += 1) {
-          const option = document.createElement("option");
-          option.value = String(n);
-          option.textContent = String(n);
-          select.append(option);
-        }
-        select.value = selected;
-        if (!selected) select.classList.add("is-empty");
-        return select;
-      }
-
-      function cleanWeight(value) {
-        return cleanBodyWeight(value);
-      }
-
-      function planCaption(text, control) {
-        const label = document.createElement("label");
-        const caption = document.createElement("span");
-        caption.className = "plan-caption";
-        caption.textContent = text;
-        label.append(caption, control);
-        return label;
-      }
-
-      function weightInput(row) {
-        const input = document.createElement("input");
-        input.type = "text";
-        input.inputMode = "decimal";
-        input.lang = "ru";
-        input.autocomplete = "off";
-        input.enterKeyHint = "done";
-        input.maxLength = 5;
-        input.placeholder = "–";
-        input.className = "plan-weight";
-        input.setAttribute("aria-label", "Вес");
-        input.dataset.row = row.id;
-        input.dataset.weight = "1";
-        input.value = cleanWeight(row.weight);
-        return input;
-      }
-
-      function planColumns(row) {
-        const grid = document.createElement("div");
-        grid.className = "plan-grid";
-        grid.append(
-          planCaption("Вес", weightInput(row)),
-          planCaption("План", planBox(row, "plan")),
-          planCaption("Факт", planBox(row, "fact"))
-        );
-        return grid;
-      }
-
-      function planBox(row, field) {
-        const [sets, reps] = planParts(row[field]);
-        const box = document.createElement("span");
-        box.className = "plan-sets";
-        const times = document.createElement("span");
-        times.className = "plan-times";
-        times.textContent = "×";
-        box.append(
-          planSelect(row, field, "sets", 5, sets),
-          times,
-          planSelect(row, field, "reps", 10, reps)
-        );
-        return box;
-      }
-
-      function flushPlanSave() {
-        if (!planSaveTimer) return;
-        clearTimeout(planSaveTimer);
-        planSaveTimer = 0;
-        writeDay(selectedKey);
-      }
-
-      function schedulePlanSave(rowId, field, value) {
-        const workouts = workoutsFor(selectedKey).slice();
-        const target = workouts.find((item) => item.id === openWorkoutId);
-        if (!target) return;
-        const plan = planOf(target);
-        const row = plan.find((entry) => entry.id === rowId);
-        if (!row || (field !== "plan" && field !== "fact" && field !== "weight")) return;
-        row[field] = String(value || "").slice(0, 40);
-        target.plan = plan;
-        stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
-        markHit(rowId);
-        clearTimeout(planSaveTimer);
-        planSaveTimer = setTimeout(() => {
-          planSaveTimer = 0;
-          writeDay(selectedKey);
-        }, 350);
-      }
-
-      function withOpenWorkout(change) {
-        flushPlanSave();
-        const workouts = workoutsFor(selectedKey).map((item) => {
-          const copy = Object.assign({}, item);
-          if (copy.plan) copy.plan = planOf(copy);
-          return copy;
-        });
-        const target = workouts.find((item) => item.id === openWorkoutId);
-        if (!target || target.typeId !== "gym") return null;
-        if (!Array.isArray(target.plan)) target.plan = [];
-        change(target);
-        workouts.forEach((item) => {
-          if (Array.isArray(item.plan) && !item.plan.length) delete item.plan;
-        });
-        stampDay(selectedKey, currentRecord(selectedKey, { workouts }));
-        writeDay(selectedKey);
-        return target;
-      }
-
-      function addPlanExercise(exercise) {
-        const current = workoutsFor(selectedKey).find((item) => item.id === openWorkoutId);
-        if (!current || current.typeId !== "gym") return;
-        if (planOf(current).some((row) => row.exerciseId === exercise.id)) {
-          toast("Уже в плане");
-          return;
-        }
-        withOpenWorkout((item) => {
-          item.plan.push({
-            id: uid(),
-            exerciseId: exercise.id,
-            name: exercise.name,
-            plan: "",
-            fact: ""
-          });
-        });
-        planExpanded = true;
-        closeSheet(exercisePicker);
-        paintWorkout();
-      }
-
-      function removePlanRow(rowId) {
-        withOpenWorkout((item) => {
-          item.plan = planOf(item).filter((row) => row.id !== rowId);
-        });
-        paintWorkout();
-      }
-
-      function renderExerciseList() {
-        exerciseList.replaceChildren(...exercises.map((exercise) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "kind-row";
-          btn.dataset.id = exercise.id;
-          const name = document.createElement("span");
-          name.className = "kind-name";
-          name.textContent = exercise.name;
-          btn.append(name);
-          return btn;
-        }));
-        exerciseHint.classList.toggle("hidden", exercises.length > 0);
-      }
-
-      function openExercisePicker() {
-        flushPlanSave();
-        renderExerciseList();
-        exerciseNameInput.value = "";
-        openSheet(exercisePicker);
-        requestAnimationFrame(() => exerciseNameInput.focus());
-      }
-
-      function createExercise() {
-        const name = exerciseNameInput.value.trim().replace(/\s+/g, " ").slice(0, 40);
-        if (!name) {
-          toast("Введите название упражнения");
-          exerciseNameInput.focus();
-          return;
-        }
-        let exercise = exercises.find((item) => item.name.toLowerCase() === name.toLowerCase());
-        if (!exercise) {
-          exercise = { id: uid(), name };
-          exercises.unshift(exercise);
-          writeExercises();
-        }
-        exerciseNameInput.value = "";
-        addPlanExercise(exercise);
       }
 
       function applyHealthPayload(payload) {
@@ -3891,68 +3330,7 @@
         if (event.target === distanceBackdrop) closeSheet(distanceBackdrop);
       });
       workoutBackdrop.addEventListener("click", (event) => {
-        if (event.target !== workoutBackdrop) return;
-        flushPlanSave();
-        closeSheet(exercisePicker);
-        closeSheet(workoutBackdrop);
-      });
-      workoutStats.addEventListener("click", (event) => {
-        if (event.target.closest("#plan-edit")) {
-          openExercisePicker();
-          return;
-        }
-        if (event.target.closest("#plan-toggle")) {
-          planExpanded = !planExpanded;
-          workoutStats.classList.toggle("plan-collapsed", !planExpanded);
-          const toggle = document.getElementById("plan-toggle");
-          if (toggle) toggle.setAttribute("aria-expanded", planExpanded ? "true" : "false");
-          return;
-        }
-        const remove = event.target.closest("[data-remove-plan]");
-        if (remove) removePlanRow(remove.dataset.removePlan);
-      });
-      workoutStats.addEventListener("input", (event) => {
-        const input = event.target.closest("input[data-weight]");
-        if (!input) return;
-        const prev = input.value;
-        const next = cleanWeight(prev);
-        if (prev !== next) {
-          const at = input.selectionStart || next.length;
-          input.value = next;
-          const pos = Math.max(0, Math.min(next.length, at - (prev.length - next.length)));
-          try { input.setSelectionRange(pos, pos); } catch (_) {}
-        }
-        schedulePlanSave(input.dataset.row, "weight", next.replace(/,$/, ""));
-      });
-      workoutStats.addEventListener("change", (event) => {
-        const select = event.target.closest("select[data-row]");
-        if (!select) return;
-        select.classList.toggle("is-empty", !select.value);
-        const box = select.closest(".plan-sets");
-        const sets = box.querySelector('[data-part="sets"]').value;
-        const reps = box.querySelector('[data-part="reps"]').value;
-        schedulePlanSave(select.dataset.row, select.dataset.field, formatPlan(sets, reps));
-      });
-      workoutStats.addEventListener("focusout", (event) => {
-        const input = event.target.closest && event.target.closest("input[data-weight]");
-        if (input && input.value.endsWith(",")) {
-          input.value = input.value.slice(0, -1);
-          schedulePlanSave(input.dataset.row, "weight", input.value);
-        }
-        flushPlanSave();
-      });
-      document.getElementById("exercise-close").addEventListener("click", () => {
-        closeSheet(exercisePicker);
-      });
-      document.getElementById("exercise-add").addEventListener("click", createExercise);
-      exerciseNameInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") createExercise();
-      });
-      exerciseList.addEventListener("click", (event) => {
-        const btn = event.target.closest(".kind-row");
-        if (!btn) return;
-        const exercise = exercises.find((item) => item.id === btn.dataset.id);
-        if (exercise) addPlanExercise(exercise);
+        if (event.target === workoutBackdrop) closeSheet(workoutBackdrop);
       });
 
       document.getElementById("refresh-btn").addEventListener("click", () => {
@@ -4050,10 +3428,6 @@
           closeSheet(measureScreen);
           return;
         }
-        if (!exercisePicker.classList.contains("hidden")) {
-          closeSheet(exercisePicker);
-          return;
-        }
         if (!pickerEl.classList.contains("hidden")) {
           closeSheet(pickerEl);
           return;
@@ -4075,10 +3449,7 @@
           closeSheet(distanceBackdrop);
           return;
         }
-        if (!workoutBackdrop.classList.contains("hidden")) {
-          flushPlanSave();
-          closeSheet(workoutBackdrop);
-        }
+        if (!workoutBackdrop.classList.contains("hidden")) closeSheet(workoutBackdrop);
       });
 
       goalInput.addEventListener("keydown", (event) => {
