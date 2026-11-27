@@ -1883,14 +1883,14 @@
             format: formatKmNumber,
             extra: [
               {
-                caption: "Количество тренировок",
-                peaks: (year) => monthCounts("snowboard", year),
-                format: formatCount
-              },
-              {
                 caption: "Время тренировки",
                 peaks: (year) => monthPeaks(workoutPeak("snowboard", "durationSec"), year),
                 format: (value) => value > 0 ? formatDuration(value) : "0"
+              },
+              {
+                caption: "Количество тренировок",
+                peaks: (year) => monthCounts("snowboard", year),
+                format: formatCount
               }
             ]
           };
@@ -1903,14 +1903,14 @@
             format: formatKmNumber,
             extra: [
               {
-                caption: "Количество тренировок",
-                peaks: (year) => monthCounts("bike", year),
-                format: formatCount
-              },
-              {
                 caption: "Время тренировки",
                 peaks: (year) => monthPeaks(workoutPeak("bike", "durationSec"), year),
                 format: (value) => value > 0 ? formatDuration(value) : "0"
+              },
+              {
+                caption: "Количество тренировок",
+                peaks: (year) => monthCounts("bike", year),
+                format: formatCount
               }
             ]
           };
