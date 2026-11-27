@@ -10,10 +10,13 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.Record
 import androidx.health.connect.client.records.SpeedRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.aggregate.AggregateMetric
+import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import java.time.Instant
 import java.time.LocalDate
+import java.time.Period
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
@@ -112,34 +115,35 @@ object HealthReader {
 
         fun day(date: LocalDate): JSONObject = days.getOrPut(date) { JSONObject() }
 
-        if (granted.contains(stepsPermission)) {
-            val totals = mutableMapOf<LocalDate, Double>()
-            readAll(client, StepsRecord::class, start, end).forEach { record ->
-                addSpan(record.startTime, record.endTime, record.count.toDouble(), zone, totals)
-            }
-            totals.forEach { (date, value) ->
-                val steps = value.roundToInt()
-                if (steps in 0..200000) day(date).put("steps", steps)
-            }
-        }
-        if (granted.contains(distancePermission)) {
-            val totals = mutableMapOf<LocalDate, Double>()
-            readAll(client, DistanceRecord::class, start, end).forEach { record ->
-                addSpan(record.startTime, record.endTime, record.distance.inMeters, zone, totals)
-            }
-            totals.forEach { (date, value) ->
-                val meters = value.roundToInt()
-                if (meters in 0..200000) day(date).put("distanceM", meters)
-            }
-        }
-        if (granted.contains(caloriesPermission)) {
-            val totals = mutableMapOf<LocalDate, Double>()
-            readAll(client, ActiveCaloriesBurnedRecord::class, start, end).forEach { record ->
-                addSpan(record.startTime, record.endTime, record.energy.inKilocalories, zone, totals)
-            }
-            totals.forEach { (date, value) ->
-                val calories = value.roundToInt()
-                if (calories in 0..20000) day(date).put("activeCalories", calories)
+        val metrics = mutableSetOf<AggregateMetric<*>>()
+        if (granted.contains(stepsPermission)) metrics += StepsRecord.COUNT_TOTAL
+        if (granted.contains(distancePermission)) metrics += DistanceRecord.DISTANCE_TOTAL
+        if (granted.contains(caloriesPermission)) metrics += ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL
+        if (metrics.isNotEmpty()) {
+            val startLocal = today.minusDays(27).atStartOfDay()
+            val endLocal = today.plusDays(1).atStartOfDay()
+            val grouped = client.aggregateGroupByPeriod(
+                AggregateGroupByPeriodRequest(
+                    metrics,
+                    TimeRangeFilter.between(startLocal, endLocal),
+                    Period.ofDays(1)
+                )
+            )
+            grouped.forEach { bucket ->
+                val date = bucket.startTime.toLocalDate()
+                val result = bucket.result
+                if (granted.contains(stepsPermission)) {
+                    val steps = result[StepsRecord.COUNT_TOTAL]?.toInt() ?: 0
+                    if (steps in 1..200000) day(date).put("steps", steps)
+                }
+                if (granted.contains(distancePermission)) {
+                    val meters = result[DistanceRecord.DISTANCE_TOTAL]?.inMeters?.roundToInt() ?: 0
+                    if (meters in 1..200000) day(date).put("distanceM", meters)
+                }
+                if (granted.contains(caloriesPermission)) {
+                    val calories = result[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories?.roundToInt() ?: 0
+                    if (calories in 1..20000) day(date).put("activeCalories", calories)
+                }
             }
         }
 
@@ -243,25 +247,6 @@ object HealthReader {
             if (to > from) total += value * (to - from).toDouble() / whole.toDouble()
         }
         return total
-    }
-
-    private fun addSpan(start: Instant, end: Instant, total: Double, zone: ZoneId, into: MutableMap<LocalDate, Double>) {
-        if (total < 0) return
-        if (!end.isAfter(start)) {
-            val date = start.atZone(zone).toLocalDate()
-            into[date] = (into[date] ?: 0.0) + total
-            return
-        }
-        var cursor = start
-        val whole = end.toEpochMilli() - start.toEpochMilli()
-        while (cursor.isBefore(end)) {
-            val date = cursor.atZone(zone).toLocalDate()
-            val next = date.plusDays(1).atStartOfDay(zone).toInstant()
-            val sliceEnd = if (next.isBefore(end)) next else end
-            val fraction = (sliceEnd.toEpochMilli() - cursor.toEpochMilli()).toDouble() / whole.toDouble()
-            into[date] = (into[date] ?: 0.0) + total * fraction
-            cursor = sliceEnd
-        }
     }
 
     private suspend fun <T : Record> readAll(

@@ -2751,23 +2751,30 @@
           let steps = stepsFor(key);
           let calories = caloriesFor(key);
           let distanceM = distanceFor(key);
-          if (!row.manualSteps && Number.isFinite(incoming.steps) && incoming.steps >= 0 && incoming.steps <= 200000) {
-            steps = Math.round(incoming.steps);
+          let manualSteps = row.manualSteps;
+          let manualCalories = row.manualCalories;
+          const incomingSteps = Number(incoming.steps);
+          const incomingCalories = Number(incoming.activeCalories);
+          const incomingDistance = Number(incoming.distanceM);
+          if (onPhone() && manualSteps && incomingSteps > 0 && steps > incomingSteps * 3) manualSteps = false;
+          if (onPhone() && manualCalories && incomingCalories > 0 && calories > incomingCalories * 3) manualCalories = false;
+          if (!manualSteps && Number.isFinite(incomingSteps) && incomingSteps >= 0 && incomingSteps <= 200000) {
+            steps = Math.round(incomingSteps);
           }
-          if (!row.manualCalories && Number.isFinite(incoming.activeCalories) && incoming.activeCalories >= 0 && incoming.activeCalories <= 20000) {
-            calories = Math.round(incoming.activeCalories);
+          if (!manualCalories && Number.isFinite(incomingCalories) && incomingCalories >= 0 && incomingCalories <= 20000) {
+            calories = Math.round(incomingCalories);
           }
-          if (!row.manualDistance && Number.isFinite(incoming.distanceM) && incoming.distanceM >= 0 && incoming.distanceM <= 200000) {
-            distanceM = Math.round(incoming.distanceM);
+          if (!row.manualDistance && Number.isFinite(incomingDistance) && incomingDistance >= 0 && incomingDistance <= 200000) {
+            distanceM = Math.round(incomingDistance);
           }
-          if (steps === stepsFor(key) && calories === caloriesFor(key) && distanceM === distanceFor(key)) return;
+          if (steps === stepsFor(key) && calories === caloriesFor(key) && distanceM === distanceFor(key) && manualSteps === row.manualSteps && manualCalories === row.manualCalories) return;
           stampDay(key, {
             steps,
             workouts,
             activeCalories: calories,
             distanceM,
-            manualSteps: row.manualSteps,
-            manualCalories: row.manualCalories,
+            manualSteps,
+            manualCalories,
             manualDistance: row.manualDistance,
             dismissedGarmin: row.dismissedGarmin
           });
