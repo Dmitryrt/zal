@@ -1204,6 +1204,16 @@
         Уведомления
         <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
       </button>
+      <button class="settings-link" id="garmin-toggle" type="button" hidden aria-expanded="false" aria-controls="garmin-panel">
+        Ключ Garmin
+        <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>
+      </button>
+      <div class="settings-panel" id="garmin-panel" hidden>
+        <input id="garmin-input" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" aria-label="Ключ Garmin">
+        <p class="sheet-hint" id="garmin-hint">Вставьте ключ Garmin</p>
+        <button class="sheet-save" id="garmin-save" type="button">Сохранить</button>
+        <button class="settings-link" id="garmin-clear" type="button" hidden>Удалить ключ</button>
+      </div>
     </div>
   </div>
 
@@ -3611,9 +3621,60 @@
         setGoalOpen(open);
       });
 
+      const garminToggle = document.getElementById("garmin-toggle");
+      const garminPanel = document.getElementById("garmin-panel");
+      const garminInput = document.getElementById("garmin-input");
+      const garminHint = document.getElementById("garmin-hint");
+      const garminClear = document.getElementById("garmin-clear");
+
+      function refreshGarminRow() {
+        if (!window.ZalGarmin || typeof window.ZalGarmin.hasKey !== "function") return;
+        garminToggle.hidden = false;
+        const saved = window.ZalGarmin.hasKey();
+        garminHint.textContent = saved ? "Ключ сохранён на телефоне" : "Вставьте ключ Garmin";
+        garminClear.hidden = !saved;
+      }
+
+      garminToggle.addEventListener("click", () => {
+        const open = garminPanel.hidden;
+        garminPanel.hidden = !open;
+        garminToggle.setAttribute("aria-expanded", open ? "true" : "false");
+        if (open) {
+          garminInput.value = "";
+          refreshGarminRow();
+          garminInput.focus();
+        }
+      });
+
+      document.getElementById("garmin-save").addEventListener("click", () => {
+        const value = garminInput.value.trim();
+        if (!value) {
+          toast("Вставьте ключ");
+          return;
+        }
+        window.ZalGarmin.save(value);
+        garminInput.value = "";
+        refreshGarminRow();
+        toast("Ключ сохранён");
+      });
+
+      garminClear.addEventListener("click", () => {
+        window.ZalGarmin.save("");
+        garminInput.value = "";
+        refreshGarminRow();
+        toast("Ключ удалён");
+      });
+
+      garminInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") document.getElementById("garmin-save").click();
+      });
+
       document.getElementById("settings-btn").addEventListener("click", () => {
         goalInput.value = String(stepGoal);
         setGoalOpen(false);
+        garminPanel.hidden = true;
+        garminToggle.setAttribute("aria-expanded", "false");
+        refreshGarminRow();
         openSheet(settingsBackdrop);
       });
 

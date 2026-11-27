@@ -16,23 +16,17 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.content.SharedPreferences;
 import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.health.connect.client.PermissionController;
 import androidx.webkit.WebViewAssetLoader;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import org.json.JSONObject;
 
 public class MainActivity extends ComponentActivity {
     private WebView webView;
-    private static final String GARMIN_FILE = "https://dmitryrt.github.io/zal/garmin-steps.json";
-
     private boolean pageReady;
     private boolean garminReading;
     private boolean healthPromptDone;
@@ -74,6 +68,7 @@ public class MainActivity extends ComponentActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setAllowFileAccess(false);
         webView.addJavascriptInterface(new HealthBridge(), "ZalHealth");
+        webView.addJavascriptInterface(new GarminBridge(), "ZalGarmin");
         webView.addJavascriptInterface(new NotifyBridge(), "ZalNotifications");
 
         WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
@@ -98,31 +93,33 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (pageReady) pullGarminFile();
+        if (pageReady) pullGarminApi();
     }
 
-    public void pullGarminFile() {
+    private SharedPreferences garminPrefs() {
+        return getSharedPreferences("zal-garmin", MODE_PRIVATE);
+    }
+
+    private String garminKey() {
+        String key = garminPrefs().getString("apiKey", "");
+        return key == null ? "" : key.trim();
+    }
+
+    public void pullGarminApi() {
         if (garminReading) return;
+        String key = garminKey();
+        if (key.isEmpty()) return;
         garminReading = true;
         new Thread(() -> {
             try {
-                HttpURLConnection conn = (HttpURLConnection) new URL(GARMIN_FILE + "?t=" + System.currentTimeMillis()).openConnection();
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(20000);
-                conn.setRequestProperty("Accept", "application/json");
-                conn.setInstanceFollowRedirects(true);
-                if (conn.getResponseCode() != 200) return;
-                ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                try (InputStream in = conn.getInputStream()) {
-                    byte[] chunk = new byte[8192];
-                    int n;
-                    while ((n = in.read(chunk)) >= 0) buf.write(chunk, 0, n);
-                }
-                JSONObject payload = new JSONObject(buf.toString(StandardCharsets.UTF_8));
-                if (!payload.has("days")) return;
-                deliverHealth(payload.toString());
+                String json = GarminPull.fetch(key);
+                deliverHealth(json);
+            } catch (GarminPull.Failure error) {
+                showHealthNote(error.getAuth()
+                    ? "Garmin не принял ключ"
+                    : "Не удалось обновить данные Garmin");
             } catch (Exception ignored) {
-                // The journal already on the phone stays as it is.
+                showHealthNote("Не удалось обновить данные Garmin");
             } finally {
                 garminReading = false;
             }
@@ -198,7 +195,22 @@ public class MainActivity extends ComponentActivity {
     private final class HealthBridge {
         @JavascriptInterface
         public void pull() {
-            runOnUiThread(() -> pullGarminFile());
+            runOnUiThread(() -> pullGarminApi());
+        }
+    }
+
+    private final class GarminBridge {
+        @JavascriptInterface
+        public boolean hasKey() {
+            return !garminKey().isEmpty();
+        }
+
+        @JavascriptInterface
+        public void save(String key) {
+            String next = key == null ? "" : key.trim();
+            if (next.length() > 200) next = next.substring(0, 200);
+            garminPrefs().edit().putString("apiKey", next).apply();
+            if (!next.isEmpty()) runOnUiThread(() -> pullGarminApi());
         }
     }
 
