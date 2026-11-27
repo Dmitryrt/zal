@@ -883,7 +883,7 @@
       align-items: flex-end;
       gap: 4px;
       height: 236px;
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
     .year-bar {
@@ -936,14 +936,13 @@
       line-height: 1;
     }
 
-    .chart-block { margin-top: 26px; }
+    .chart-block { margin-top: 13px; }
+
+    #record-chart-year.records-hint { margin-bottom: 7px; }
 
     .chart-caption {
       margin: 0 6px;
-      color: var(--ink);
-      font-size: 0.98rem;
-      font-weight: 650;
-      letter-spacing: -0.02em;
+      font-weight: 400;
     }
 
     .catalog-inner {
@@ -1877,7 +1876,7 @@
                 format: formatCount
               },
               {
-                caption: "Максимальное время",
+                caption: "Время тренировки",
                 peaks: (year) => monthPeaks(workoutPeak("snowboard", "durationSec"), year),
                 format: (value) => value > 0 ? formatDuration(value) : "0"
               }
@@ -1927,8 +1926,8 @@
         recordChartExtra.replaceChildren(...(spec.extra || []).map((part) => {
           const block = document.createElement("section");
           block.className = "chart-block";
-          const caption = document.createElement("h3");
-          caption.className = "chart-caption";
+          const caption = document.createElement("p");
+          caption.className = "catalog-hint records-hint chart-caption";
           caption.textContent = part.caption;
           const chart = document.createElement("div");
           chart.className = "year-chart";
