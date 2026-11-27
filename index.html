@@ -1451,8 +1451,6 @@
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-database-compat.js"></script>
   <script>
     (function () {
       const JOURNAL_ID = "zalsteps01";
@@ -1560,6 +1558,10 @@
 
       function firebaseConfigured() {
         return Boolean(firebaseConfig.apiKey && firebaseConfig.databaseURL && firebaseConfig.projectId);
+      }
+
+      function onPhone() {
+        return Boolean(window.ZalHealth && typeof window.ZalHealth.pull === "function");
       }
 
       function journalRef() {
@@ -2984,8 +2986,27 @@
         });
       }
 
+      function loadFirebase() {
+        const urls = [
+          "https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js",
+          "https://www.gstatic.com/firebasejs/11.6.0/firebase-database-compat.js"
+        ];
+        const load = (index) => new Promise((resolve, reject) => {
+          if (index >= urls.length) {
+            resolve();
+            return;
+          }
+          const script = document.createElement("script");
+          script.src = urls[index];
+          script.onload = () => load(index + 1).then(resolve, reject);
+          script.onerror = () => reject(new Error("firebase"));
+          document.head.append(script);
+        });
+        return load(0);
+      }
+
       function connectCloud() {
-        if (!firebaseConfigured()) return;
+        if (onPhone() || !firebaseConfigured()) return;
         try {
           firebase.initializeApp(firebaseConfig);
         } catch (error) {
@@ -3782,9 +3803,13 @@
         window.ZalNotifications.save(JSON.stringify(savedNotify));
       }
       watchGarminRefresh();
-      connectCloud();
-      if (window.ZalHealth && typeof window.ZalHealth.pull === "function") pullGarminSteps();
+      if (onPhone()) pullGarminSteps();
       else if (!firebaseConfigured()) pullGarminSteps();
+      else loadFirebase().then(() => connectCloud()).catch((error) => {
+        console.error(error);
+        toast("Не удалось подключить Firebase");
+        pullGarminSteps();
+      });
     })();
   </script>
 </body>
