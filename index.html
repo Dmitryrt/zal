@@ -1440,6 +1440,8 @@
       let stepGoal = DEFAULT_GOAL;
       let days = {};
       let frequentIds = [];
+      let pendingFrequent = [];
+      let syncingFrequent = false;
       let exercises = [];
       let measurements = {};
       let measureMonths = [`${new Date().getFullYear()}-12`];
@@ -1607,6 +1609,7 @@
           stepGoal,
           days,
           frequentIds,
+          pendingFrequent,
           exercises,
           measurements,
           measureMonths,
@@ -1869,10 +1872,57 @@
         else ref.set(payload).catch(cloudError);
       }
 
-      function writeFrequent() {
+      function normalizePending(value) {
+        if (!Array.isArray(value)) return [];
+        const ops = [];
+        value.forEach((op) => {
+          if (!op || (op.type !== "add" && op.type !== "remove")) return;
+          const id = String(op.id || "");
+          if (!KIND_IDS.has(id)) return;
+          ops.push({ type: op.type, id });
+        });
+        return ops;
+      }
+
+      function frequentFrom(base) {
+        let ids = base.slice();
+        pendingFrequent.forEach((op) => {
+          ids = ids.filter((item) => item !== op.id);
+          if (op.type === "add") ids.unshift(op.id);
+        });
+        return ids;
+      }
+
+      function syncPendingFrequent() {
+        if (!cloudReady || skipCloud || syncingFrequent || !pendingFrequent.length) return;
+        syncingFrequent = true;
+        const ops = pendingFrequent.slice();
+        journalRef().child("frequentTypes").transaction((current) => {
+          let ids = normalizeFrequent(current);
+          ops.forEach((op) => {
+            ids = ids.filter((item) => item !== op.id);
+            if (op.type === "add") ids.unshift(op.id);
+          });
+          return ids.length ? ids : null;
+        }, (error, committed) => {
+          syncingFrequent = false;
+          if (error) {
+            cloudError(error);
+            return;
+          }
+          if (!committed) return;
+          pendingFrequent = pendingFrequent.filter((op) => !ops.includes(op));
+          persistLocal();
+          syncPendingFrequent();
+        }, false);
+      }
+
+      function queueFrequent(type, id) {
+        pendingFrequent.push({ type, id });
+        const rest = frequentIds.filter((item) => item !== id);
+        frequentIds = type === "add" ? [id].concat(rest) : rest;
         persistLocal();
-        if (!cloudReady || skipCloud) return;
-        journalRef().child("frequentTypes").set(frequentIds).catch(cloudError);
+        syncPendingFrequent();
       }
 
       function cleanMeasure(value) {
@@ -2378,8 +2428,7 @@
       }
 
       function removeFrequent(id) {
-        frequentIds = frequentIds.filter((item) => item !== id);
-        writeFrequent();
+        queueFrequent("remove", id);
         renderKinds();
       }
 
@@ -2407,11 +2456,7 @@
         } else if (value && !value.days) {
           days = {};
         }
-        if (value && value.frequentTypes) {
-          frequentIds = normalizeFrequent(value.frequentTypes);
-        } else if (value && !value.frequentTypes) {
-          frequentIds = [];
-        }
+        frequentIds = frequentFrom(normalizeFrequent(value && value.frequentTypes));
         if (value && value.exercises) {
           exercises = normalizeExercises(value.exercises);
         } else if (value && !value.exercises) {
@@ -2718,10 +2763,12 @@
               if (measureMonths.length) payload.measureMonths = measureMonths;
               journalRef().set(payload).catch(cloudError);
             }
+            syncPendingFrequent();
             pullGarminSteps();
             return;
           }
           applyCloud(value);
+          syncPendingFrequent();
           pullGarminSteps();
         }, (error) => {
           cloudError(error);
@@ -3373,8 +3420,7 @@
           toast("Уже в списке");
           return;
         }
-        frequentIds.unshift(kind.id);
-        writeFrequent();
+        queueFrequent("add", kind.id);
         closeSheet(pickerEl);
         renderKinds();
       });
@@ -3459,9 +3505,11 @@
         measureCursor = new Date(year, month - 1, 1);
       }
       if (stored.catalogVersion === CATALOG_VERSION) {
-        frequentIds = normalizeFrequent(stored.frequentIds);
+        pendingFrequent = normalizePending(stored.pendingFrequent);
+        frequentIds = frequentFrom(normalizeFrequent(stored.frequentIds));
       } else {
         frequentIds = [];
+        pendingFrequent = [];
         cleanDayWorkouts();
       }
       seedLocal = Boolean(Object.keys(days).length || stepGoal !== DEFAULT_GOAL || frequentIds.length || exercises.length || Object.keys(measurements).length || measureMonths.length > 1);
