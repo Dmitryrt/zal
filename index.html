@@ -1650,12 +1650,12 @@
         return icon;
       }
 
-      function mascotFor(workouts, gymDay) {
+      function mascotFor(workouts) {
         for (let i = workouts.length - 1; i >= 0; i--) {
           const kind = typeById(workouts[i].typeId);
           if (kind && kind.mascot) return kind.mascot;
         }
-        return gymDay ? "./doge-lift.jpg?v=3" : "./cheems-rest.jpg?v=2";
+        return "./cheems-rest.jpg?v=2";
       }
 
       function fitMascot() {
@@ -2269,11 +2269,9 @@
         );
         distanceValue.textContent = formatKm(distanceFor(selectedKey));
 
-        const weekday = selectedDate.getDay();
-        const gymDay = weekday === 2 || weekday === 4;
         const workouts = workoutsFor(selectedKey);
         const hasWorkouts = workouts.length > 0;
-        emptyBear.src = mascotFor(workouts, gymDay);
+        emptyBear.src = mascotFor(workouts);
         emptyState.classList.toggle("has-workouts", hasWorkouts);
         dayWorkoutsEl.classList.toggle("hidden", !hasWorkouts);
         if (hasWorkouts) {
