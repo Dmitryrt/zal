@@ -863,6 +863,65 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .record-row.tappable {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
+    .record-row.tappable:active { opacity: 0.72; }
+
+    .record-chevron {
+      color: var(--dim);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .year-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .year-bar {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 22px;
+    }
+
+    .year-bar .month {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 650;
+    }
+
+    .year-bar .track {
+      height: 10px;
+      border-radius: 99px;
+      background: var(--fill);
+      overflow: hidden;
+    }
+
+    .year-bar .fill {
+      display: block;
+      height: 100%;
+      border-radius: 99px;
+      background: var(--ring);
+    }
+
+    .year-bar.best .num { color: var(--ring); }
+
+    .year-bar .num {
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+      font-size: 0.92rem;
+      text-align: right;
+    }
+
     .catalog-inner {
       width: min(430px, 100%);
       min-height: 100%;
@@ -1347,6 +1406,17 @@
     </div>
   </div>
 
+  <div class="catalog picker hidden" id="steps-chart" role="dialog" aria-labelledby="steps-chart-title">
+    <div class="catalog-inner">
+      <button class="catalog-grab" id="steps-chart-close" type="button" aria-label="Назад">
+        <span></span>
+      </button>
+      <h2 class="picker-title" id="steps-chart-title">Шаги</h2>
+      <p class="catalog-hint records-hint" id="steps-chart-year">Максимум за месяц</p>
+      <div class="year-chart" id="steps-chart-list"></div>
+    </div>
+  </div>
+
   <div class="catalog picker hidden" id="kind-picker" role="dialog" aria-labelledby="picker-title">
     <div class="catalog-inner">
       <button class="catalog-grab" id="picker-close" type="button" aria-label="Назад">
@@ -1367,6 +1437,7 @@
       const RING_R = 15.2;
       const RING = 2 * Math.PI * RING_R;
       const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+      const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
       const MONTHS_GEN = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
       const CUSTOM_ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.4 9.2h2.1l.7-2.2c.2-.6.8-1 1.4-1h1.1c.8 0 1.4.7 1.2 1.5L10.4 9.2h3.2l-.5-1.7c-.2-.8.4-1.5 1.2-1.5h1.1c.6 0 1.2.4 1.4 1l.7 2.2h2.1c.9 0 1.6.7 1.6 1.6v1.1c0 .9-.7 1.6-1.6 1.6h-2.1l-.7 2.2c-.2.6-.8 1-1.4 1h-1.1c-.8 0-1.4-.7-1.2-1.5l.5-1.7H10.4l.5 1.7c.2.8-.4 1.5-1.2 1.5H8.6c-.6 0-1.2-.4-1.4-1l-.7-2.2H4.4c-.9 0-1.6-.7-1.6-1.6v-1.1c0-.9.7-1.6 1.6-1.6z"/></svg>';
       const CATALOG_VERSION = 3;
@@ -1431,6 +1502,9 @@
       const recordsEl = document.getElementById("records");
       const recordsList = document.getElementById("records-list");
       const recordsHint = document.getElementById("records-hint");
+      const stepsChartEl = document.getElementById("steps-chart");
+      const stepsChartYear = document.getElementById("steps-chart-year");
+      const stepsChartList = document.getElementById("steps-chart-list");
       const kindList = document.getElementById("kind-list");
       const dayWorkoutsEl = document.getElementById("day-workouts");
       const pickerEl = document.getElementById("kind-picker");
@@ -1713,6 +1787,44 @@
           if (key.startsWith(month) && value > inMonth) inMonth = value;
         });
         return { inMonth, inYear };
+      }
+
+      function monthPeaks(read, year) {
+        const peaks = Array(12).fill(0);
+        Object.keys(days).forEach((key) => {
+          if (!key.startsWith(`${year}-`)) return;
+          const value = read(key);
+          if (!Number.isFinite(value) || value <= 0) return;
+          const month = Number(key.slice(5, 7)) - 1;
+          if (month < 0 || month > 11) return;
+          if (value > peaks[month]) peaks[month] = value;
+        });
+        return peaks;
+      }
+
+      function renderStepsChart() {
+        const { year } = periodOfSelected();
+        stepsChartYear.textContent = `${year} · максимум за месяц`;
+        const peaks = monthPeaks(stepsFor, year);
+        const top = Math.max(...peaks, 0);
+        stepsChartList.replaceChildren(...peaks.map((value, index) => {
+          const row = document.createElement("div");
+          row.className = "year-bar" + (value > 0 && value === top ? " best" : "");
+          const month = document.createElement("span");
+          month.className = "month";
+          month.textContent = MONTHS_SHORT[index];
+          const track = document.createElement("span");
+          track.className = "track";
+          const fill = document.createElement("span");
+          fill.className = "fill";
+          fill.style.width = top > 0 && value > 0 ? `max(2px, ${(value / top) * 100}%)` : "0";
+          track.append(fill);
+          const num = document.createElement("span");
+          num.className = "num";
+          num.textContent = formatCount(value);
+          row.append(month, track, num);
+          return row;
+        }));
       }
 
       function bestWorkout(typeId, field) {
@@ -2359,6 +2471,7 @@
           {
             name: "Шаги",
             tone: "",
+            chart: "steps",
             svg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 3 10.5 3 8c0-2.5 1.5-6 4.5-6C9.4 2 10 3.8 10 5.5 10 8.6 8 11.2 8 14.2V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1-3.12 1-5.62 0-2.5-1.5-6-4.5-6C14.6 6 14 7.8 14 9.5c0 3.1 2 5.7 2 8.7V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4M4 13h4"/></svg>',
             value: recordValue(steps.inMonth, steps.inYear, formatCount, "")
           },
@@ -2394,8 +2507,12 @@
           }
         ];
         recordsList.replaceChildren(...rows.map((spec) => {
-          const row = document.createElement("div");
-          row.className = "record-row";
+          const row = document.createElement(spec.chart ? "button" : "div");
+          row.className = "record-row" + (spec.chart ? " tappable" : "");
+          if (spec.chart) {
+            row.type = "button";
+            row.dataset.chart = spec.chart;
+          }
           const icon = document.createElement("span");
           icon.className = "record-icon" + (spec.tone ? " " + spec.tone : "") + (spec.kind ? " plain" : "");
           if (spec.kind) icon.appendChild(kindPicture(typeById(spec.kind), 44));
@@ -2417,6 +2534,12 @@
           value.textContent = spec.value.text;
           value.title = spec.value.title;
           row.append(icon, copy, value);
+          if (spec.chart) {
+            const chevron = document.createElement("span");
+            chevron.className = "record-chevron";
+            chevron.innerHTML = '<svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 6 6-6 6"/></svg>';
+            row.append(chevron);
+          }
           return row;
         }));
       }
@@ -3379,7 +3502,17 @@
         openSheet(recordsEl);
       });
       document.getElementById("records-close").addEventListener("click", () => {
+        closeSheet(stepsChartEl);
         closeSheet(recordsEl);
+      });
+      document.getElementById("steps-chart-close").addEventListener("click", () => {
+        closeSheet(stepsChartEl);
+      });
+      recordsList.addEventListener("click", (event) => {
+        const row = event.target.closest("[data-chart]");
+        if (!row || row.dataset.chart !== "steps") return;
+        renderStepsChart();
+        openSheet(stepsChartEl);
       });
       document.getElementById("catalog-close").addEventListener("click", () => {
         closeSheet(pickerEl);
@@ -3457,6 +3590,10 @@
         }
         if (!pickerEl.classList.contains("hidden")) {
           closeSheet(pickerEl);
+          return;
+        }
+        if (!stepsChartEl.classList.contains("hidden")) {
+          closeSheet(stepsChartEl);
           return;
         }
         if (!recordsEl.classList.contains("hidden")) {
