@@ -880,46 +880,60 @@
 
     .year-chart {
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: 6px;
+      align-items: flex-end;
+      gap: 4px;
+      height: 236px;
+      margin-top: 8px;
     }
 
     .year-bar {
-      display: grid;
-      grid-template-columns: 34px minmax(0, 1fr) auto;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      min-height: 22px;
+      justify-content: flex-end;
     }
 
-    .year-bar .month {
-      color: var(--muted);
-      font-size: 0.82rem;
+    .year-bar .num {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      height: 54px;
+      font-variant-numeric: tabular-nums;
       font-weight: 650;
+      font-size: 0.68rem;
+      line-height: 1;
+      color: var(--muted);
+      white-space: nowrap;
     }
+
+    .year-bar.best .num { color: var(--ring); }
 
     .year-bar .track {
-      height: 10px;
+      width: 12px;
+      height: 148px;
+      margin-top: 6px;
       border-radius: 99px;
       background: var(--fill);
+      display: flex;
+      align-items: flex-end;
       overflow: hidden;
     }
 
     .year-bar .fill {
       display: block;
-      height: 100%;
+      width: 100%;
       border-radius: 99px;
       background: var(--ring);
     }
 
-    .year-bar.best .num { color: var(--ring); }
-
-    .year-bar .num {
-      font-variant-numeric: tabular-nums;
+    .year-bar .month {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.68rem;
       font-weight: 650;
-      font-size: 0.92rem;
-      text-align: right;
+      line-height: 1;
     }
 
     .catalog-inner {
@@ -1810,19 +1824,19 @@
         stepsChartList.replaceChildren(...peaks.map((value, index) => {
           const row = document.createElement("div");
           row.className = "year-bar" + (value > 0 && value === top ? " best" : "");
-          const month = document.createElement("span");
-          month.className = "month";
-          month.textContent = MONTHS_SHORT[index];
+          const num = document.createElement("span");
+          num.className = "num";
+          num.textContent = formatCount(value);
           const track = document.createElement("span");
           track.className = "track";
           const fill = document.createElement("span");
           fill.className = "fill";
-          fill.style.width = top > 0 && value > 0 ? `max(2px, ${(value / top) * 100}%)` : "0";
+          fill.style.height = top > 0 && value > 0 ? `max(3px, ${(value / top) * 100}%)` : "0";
           track.append(fill);
-          const num = document.createElement("span");
-          num.className = "num";
-          num.textContent = formatCount(value);
-          row.append(month, track, num);
+          const month = document.createElement("span");
+          month.className = "month";
+          month.textContent = MONTHS_SHORT[index];
+          row.append(num, track, month);
           return row;
         }));
       }
