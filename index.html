@@ -1884,7 +1884,24 @@
           };
         }
         if (id === "bike") {
-          return { title: "Велосипед", hint: "максимальная дистанция, км", peaks: (year) => monthPeaks(workoutPeak("bike", "distanceM"), year), format: formatKmNumber };
+          return {
+            title: "Велосипед",
+            hint: "максимальная дистанция, км",
+            peaks: (year) => monthPeaks(workoutPeak("bike", "distanceM"), year),
+            format: formatKmNumber,
+            extra: [
+              {
+                caption: "Количество тренировок",
+                peaks: (year) => monthCounts("bike", year),
+                format: formatCount
+              },
+              {
+                caption: "Время тренировки",
+                peaks: (year) => monthPeaks(workoutPeak("bike", "durationSec"), year),
+                format: (value) => value > 0 ? formatDuration(value) : "0"
+              }
+            ]
+          };
         }
         if (id === "cardio") {
           return { title: "Кардио", hint: "сколько раз за месяц", peaks: (year) => monthCounts("cardio", year), format: formatCount };
