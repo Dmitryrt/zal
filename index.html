@@ -936,6 +936,16 @@
       line-height: 1;
     }
 
+    .chart-block { margin-top: 26px; }
+
+    .chart-caption {
+      margin: 0 6px;
+      color: var(--ink);
+      font-size: 0.98rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
     .catalog-inner {
       width: min(430px, 100%);
       min-height: 100%;
@@ -1428,6 +1438,7 @@
       <h2 class="picker-title" id="record-chart-title">Рекорд</h2>
       <p class="catalog-hint records-hint" id="record-chart-year">Максимум за месяц</p>
       <div class="year-chart" id="record-chart-list"></div>
+      <div id="record-chart-extra"></div>
     </div>
   </div>
 
@@ -1520,6 +1531,7 @@
       const recordChartTitle = document.getElementById("record-chart-title");
       const recordChartYear = document.getElementById("record-chart-year");
       const recordChartList = document.getElementById("record-chart-list");
+      const recordChartExtra = document.getElementById("record-chart-extra");
       const kindList = document.getElementById("kind-list");
       const dayWorkoutsEl = document.getElementById("day-workouts");
       const pickerEl = document.getElementById("kind-picker");
@@ -1853,7 +1865,24 @@
           return { title: "Активные калории", hint: "максимум за месяц, ккал", peaks: (year) => monthPeaks(caloriesFor, year), format: formatCount };
         }
         if (id === "snowboard") {
-          return { title: "Сноуборд", hint: "максимальная дистанция, км", peaks: (year) => monthPeaks(workoutPeak("snowboard", "distanceM"), year), format: formatKmNumber };
+          return {
+            title: "Сноуборд",
+            hint: "максимальная дистанция, км",
+            peaks: (year) => monthPeaks(workoutPeak("snowboard", "distanceM"), year),
+            format: formatKmNumber,
+            extra: [
+              {
+                caption: "Количество тренировок",
+                peaks: (year) => monthCounts("snowboard", year),
+                format: formatCount
+              },
+              {
+                caption: "Максимальное время",
+                peaks: (year) => monthPeaks(workoutPeak("snowboard", "durationSec"), year),
+                format: (value) => value > 0 ? formatDuration(value) : "0"
+              }
+            ]
+          };
         }
         if (id === "bike") {
           return { title: "Велосипед", hint: "максимальная дистанция, км", peaks: (year) => monthPeaks(workoutPeak("bike", "distanceM"), year), format: formatKmNumber };
@@ -1864,22 +1893,14 @@
         return null;
       }
 
-      function renderRecordChart(id) {
-        const spec = recordChartSpec(id);
-        if (!spec) return;
-        const { year } = periodOfSelected();
-        recordChartTitle.textContent = spec.title;
-        recordChartYear.textContent = `${year} · ${spec.hint}`;
-        if (spec.color) recordChartList.style.setProperty("--chart", spec.color);
-        else recordChartList.style.removeProperty("--chart");
-        const peaks = spec.peaks(year);
+      function paintYearChart(list, peaks, format) {
         const top = Math.max(...peaks, 0);
-        recordChartList.replaceChildren(...peaks.map((value, index) => {
+        list.replaceChildren(...peaks.map((value, index) => {
           const row = document.createElement("div");
           row.className = "year-bar" + (value > 0 && value === top ? " best" : "");
           const num = document.createElement("span");
           num.className = "num";
-          num.textContent = spec.format(value);
+          num.textContent = format(value);
           const track = document.createElement("span");
           track.className = "track";
           const fill = document.createElement("span");
@@ -1891,6 +1912,29 @@
           month.textContent = MONTHS_SHORT[index];
           row.append(num, track, month);
           return row;
+        }));
+      }
+
+      function renderRecordChart(id) {
+        const spec = recordChartSpec(id);
+        if (!spec) return;
+        const { year } = periodOfSelected();
+        recordChartTitle.textContent = spec.title;
+        recordChartYear.textContent = `${year} · ${spec.hint}`;
+        if (spec.color) recordChartEl.style.setProperty("--chart", spec.color);
+        else recordChartEl.style.removeProperty("--chart");
+        paintYearChart(recordChartList, spec.peaks(year), spec.format);
+        recordChartExtra.replaceChildren(...(spec.extra || []).map((part) => {
+          const block = document.createElement("section");
+          block.className = "chart-block";
+          const caption = document.createElement("h3");
+          caption.className = "chart-caption";
+          caption.textContent = part.caption;
+          const chart = document.createElement("div");
+          chart.className = "year-chart";
+          block.append(caption, chart);
+          paintYearChart(chart, part.peaks(year), part.format);
+          return block;
         }));
       }
 
