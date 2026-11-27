@@ -883,7 +883,7 @@
       align-items: flex-end;
       gap: 4px;
       height: 236px;
-      margin-top: 4px;
+      margin-top: 0;
     }
 
     .year-bar {
@@ -936,9 +936,9 @@
       line-height: 1;
     }
 
-    .chart-block { margin-top: 13px; }
+    .chart-block { margin-top: 22px; }
 
-    #record-chart-year.records-hint { margin-bottom: 7px; }
+    #record-chart-year.records-hint { margin: 10px 6px 0; }
 
     .chart-caption {
       margin: 0 6px;
@@ -1918,8 +1918,8 @@
         const spec = recordChartSpec(id);
         if (!spec) return;
         const { year } = periodOfSelected();
-        recordChartTitle.textContent = spec.title;
-        recordChartYear.textContent = `${year} · ${spec.hint}`;
+        recordChartTitle.textContent = `${spec.title} ${year}`;
+        recordChartYear.textContent = spec.hint;
         if (spec.color) recordChartEl.style.setProperty("--chart", spec.color);
         else recordChartEl.style.removeProperty("--chart");
         paintYearChart(recordChartList, spec.peaks(year), spec.format);
