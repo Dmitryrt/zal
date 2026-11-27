@@ -21,12 +21,20 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.health.connect.client.PermissionController;
 import androidx.webkit.WebViewAssetLoader;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import org.json.JSONObject;
 
 public class MainActivity extends ComponentActivity {
     private WebView webView;
+    private static final String GARMIN_FILE = "https://dmitryrt.github.io/zal/garmin-steps.json";
+
     private boolean pageReady;
+    private boolean garminReading;
     private boolean healthPromptDone;
     private boolean exactAlarmAsked;
     private long lastHealthNote;
@@ -90,7 +98,35 @@ public class MainActivity extends ComponentActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (pageReady) HealthReader.pull(this);
+        if (pageReady) pullGarminFile();
+    }
+
+    public void pullGarminFile() {
+        if (garminReading) return;
+        garminReading = true;
+        new Thread(() -> {
+            try {
+                HttpURLConnection conn = (HttpURLConnection) new URL(GARMIN_FILE + "?t=" + System.currentTimeMillis()).openConnection();
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(20000);
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setInstanceFollowRedirects(true);
+                if (conn.getResponseCode() != 200) return;
+                ByteArrayOutputStream buf = new ByteArrayOutputStream();
+                try (InputStream in = conn.getInputStream()) {
+                    byte[] chunk = new byte[8192];
+                    int n;
+                    while ((n = in.read(chunk)) >= 0) buf.write(chunk, 0, n);
+                }
+                JSONObject payload = new JSONObject(buf.toString(StandardCharsets.UTF_8));
+                if (!payload.has("days")) return;
+                deliverHealth(payload.toString());
+            } catch (Exception ignored) {
+                // The journal already on the phone stays as it is.
+            } finally {
+                garminReading = false;
+            }
+        }).start();
     }
 
     public boolean isHealthPromptDone() {
@@ -162,7 +198,7 @@ public class MainActivity extends ComponentActivity {
     private final class HealthBridge {
         @JavascriptInterface
         public void pull() {
-            runOnUiThread(() -> HealthReader.pull(MainActivity.this));
+            runOnUiThread(() -> pullGarminFile());
         }
     }
 
